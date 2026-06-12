@@ -1,0 +1,25 @@
+name: accounting_pro_desktop_v2
+description: Desktop-style professional Arabic accounting system.
+publish_to: "none"
+version: 2.0.0+2
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.3.2
+  path_provider: ^2.1.5
+  share_plus: ^10.1.2
+  pdf: ^3.11.1
+  printing: ^5.13.4
+  excel: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/store_service.dart';
-import '../widgets/ui.dart';
+import '../services/store.dart';
+import '../services/export_service.dart';
+import '../widgets/theme.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onSaved;
@@ -11,7 +12,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final store = StoreService.instance;
+  final store = Store.instance;
   late TextEditingController company;
   late TextEditingController phone;
   late TextEditingController address;
@@ -26,8 +27,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     final s = store.settings;
     company = TextEditingController(text: s.companyName);
-    phone = TextEditingController(text: s.companyPhone);
-    address = TextEditingController(text: s.companyAddress);
+    phone = TextEditingController(text: s.phone);
+    address = TextEditingController(text: s.address);
     year = TextEditingController(text: s.fiscalYear.toString());
     receipt = TextEditingController(text: s.receiptStart.toString());
     payment = TextEditingController(text: s.paymentStart.toString());
@@ -37,54 +38,100 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.all(14), children: [
+    return ListView(padding: const EdgeInsets.all(12), children: [
       Container(
         padding: const EdgeInsets.all(16),
-        decoration: panel(24),
+        decoration: softCard(26),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('إعدادات الشركة والنظام', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: darkText)),
+          const Text('إعدادات الشركة', style: TextStyle(color: darkText, fontSize: 21, fontWeight: FontWeight.w900)),
           const SizedBox(height: 14),
-          field(company, 'اسم الشركة', Icons.business),
+          TextField(controller: company, decoration: fieldDec('اسم الشركة', Icons.business_rounded)),
           const SizedBox(height: 10),
-          field(phone, 'هاتف الشركة', Icons.phone),
+          TextField(controller: phone, decoration: fieldDec('الهاتف', Icons.phone_rounded)),
           const SizedBox(height: 10),
-          field(address, 'عنوان الشركة', Icons.location_on),
-          const SizedBox(height: 18),
-          const Text('الترقيم والسنة المالية', style: TextStyle(fontWeight: FontWeight.w900, color: darkText)),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: field(year, 'السنة المالية', Icons.date_range, number: true)),
-            const SizedBox(width: 10),
-            Expanded(child: field(receipt, 'بداية سند القبض', Icons.call_received, number: true)),
-          ]),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: field(payment, 'بداية سند الصرف', Icons.call_made, number: true)),
-            const SizedBox(width: 10),
-            Expanded(child: field(journal, 'بداية القيود', Icons.edit_note, number: true)),
-          ]),
-          const SizedBox(height: 10),
-          field(cheque, 'بداية رقم الشيك', Icons.confirmation_number, number: true),
-          const SizedBox(height: 16),
-          SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: save, icon: const Icon(Icons.save), label: const Text('حفظ الإعدادات'))),
+          TextField(controller: address, decoration: fieldDec('العنوان', Icons.location_on_rounded)),
         ]),
-      )
+      ),
+      const SizedBox(height: 12),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: softCard(26),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('الترقيم والسنة المالية', style: TextStyle(color: darkText, fontSize: 21, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 14),
+          TextField(controller: year, keyboardType: TextInputType.number, decoration: fieldDec('السنة المالية', Icons.date_range_rounded)),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: TextField(controller: receipt, keyboardType: TextInputType.number, decoration: fieldDec('بداية القبض', Icons.south_west_rounded))),
+            const SizedBox(width: 8),
+            Expanded(child: TextField(controller: payment, keyboardType: TextInputType.number, decoration: fieldDec('بداية الصرف', Icons.north_east_rounded))),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: TextField(controller: journal, keyboardType: TextInputType.number, decoration: fieldDec('بداية القيود', Icons.receipt_long_rounded))),
+            const SizedBox(width: 8),
+            Expanded(child: TextField(controller: cheque, keyboardType: TextInputType.number, decoration: fieldDec('بداية الشيك', Icons.confirmation_number_rounded))),
+          ]),
+          const SizedBox(height: 16),
+          SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: save, icon: const Icon(Icons.save_rounded), label: const Text('حفظ الإعدادات'))),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: softCard(26),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('النسخ الاحتياطي والاستيراد', style: TextStyle(color: darkText, fontSize: 21, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          const Text('التصدير يحفظ ملف JSON تستطيع مشاركته أو الاحتفاظ به. الاستيراد يتم بلصق محتوى ملف النسخة الاحتياطية.', style: TextStyle(color: softText, fontWeight: FontWeight.w700, height: 1.5)),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: FilledButton.icon(onPressed: ExportService.shareBackupJson, icon: const Icon(Icons.backup_rounded), label: const Text('تصدير'))),
+            const SizedBox(width: 8),
+            Expanded(child: OutlinedButton.icon(onPressed: importBackup, icon: const Icon(Icons.restore_rounded), label: const Text('استيراد'))),
+          ]),
+        ]),
+      ),
     ]);
   }
 
-  TextField field(TextEditingController c, String label, IconData icon, {bool number = false}) {
-    return TextField(
-      controller: c,
-      keyboardType: number ? TextInputType.number : TextInputType.text,
-      decoration: inputDec(label, icon),
-    );
+  Future<void> importBackup() async {
+    final raw = TextEditingController();
+    await showDialog(context: context, builder: (_) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('استيراد نسخة احتياطية'),
+        content: TextField(
+          controller: raw,
+          minLines: 6,
+          maxLines: 10,
+          decoration: fieldDec('الصق محتوى ملف JSON هنا', Icons.data_object_rounded),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          FilledButton(onPressed: () async {
+            try {
+              await store.importBackupJson(raw.text.trim());
+              if (!mounted) return;
+              Navigator.pop(context);
+              widget.onSaved();
+              setState(() {});
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم استيراد النسخة الاحتياطية')));
+            } catch (_) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر الاستيراد. تأكد أن النص من ملف النسخة الاحتياطية الصحيح.')));
+            }
+          }, child: const Text('استيراد')),
+        ],
+      ),
+    ));
   }
 
   Future<void> save() async {
     final s = store.settings;
     s.companyName = company.text.trim().isEmpty ? 'اسم الشركة' : company.text.trim();
-    s.companyPhone = phone.text.trim();
-    s.companyAddress = address.text.trim();
+    s.phone = phone.text.trim();
+    s.address = address.text.trim();
     s.fiscalYear = int.tryParse(year.text) ?? DateTime.now().year;
     s.receiptStart = int.tryParse(receipt.text) ?? 1;
     s.paymentStart = int.tryParse(payment.text) ?? 1;

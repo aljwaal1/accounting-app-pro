@@ -1,29 +1,37 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
-import 'services/store_service.dart';
-import 'widgets/ui.dart';
+import 'services/store.dart';
+import 'widgets/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await StoreService.instance.load();
-  runApp(const AccountingDesktopApp());
+  await Store.instance.load();
+  runApp(const SmartAccountingApp());
 }
 
-class AccountingDesktopApp extends StatelessWidget {
-  const AccountingDesktopApp({super.key});
+class SmartAccountingApp extends StatelessWidget {
+  const SmartAccountingApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'المحاسب الاحترافي V2',
+      title: 'المحاسب الذكي V3',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: primary),
         scaffoldBackgroundColor: bg,
-        fontFamily: null,
+        colorScheme: ColorScheme.fromSeed(seedColor: primary),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: bg,
+          foregroundColor: darkText,
+          elevation: 0,
+          centerTitle: true,
+        ),
       ),
-      home: const Directionality(textDirection: TextDirection.rtl, child: HomeScreen()),
+      home: const Directionality(
+        textDirection: TextDirection.rtl,
+        child: HomeScreen(),
+      ),
     );
   }
 }

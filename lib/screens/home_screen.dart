@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/store_service.dart';
-import '../widgets/ui.dart';
+import '../widgets/theme.dart';
+import '../services/store.dart';
 import 'accounts_screen.dart';
 import 'dashboard_screen.dart';
 import 'journal_screen.dart';
@@ -8,7 +8,7 @@ import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'voucher_screen.dart';
 
-enum AppTab { dashboard, accounts, receipt, payment, journal, reports, settings }
+enum AppTab { dashboard, accounts, receipts, payments, journal, reports, settings }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,24 +18,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   AppTab tab = AppTab.dashboard;
-  final store = StoreService.instance;
+  final store = Store.instance;
 
   void refresh() => setState(() {});
 
-  Widget currentPage() {
+  Widget page() {
     switch (tab) {
       case AppTab.dashboard:
-        return const DashboardScreen();
+        return DashboardScreen(
+          openReceipts: () => setState(() => tab = AppTab.receipts),
+          openPayments: () => setState(() => tab = AppTab.payments),
+          openAccounts: () => setState(() => tab = AppTab.accounts),
+        );
       case AppTab.accounts:
         return AccountsScreen(onChanged: refresh);
-      case AppTab.receipt:
+      case AppTab.receipts:
         return VoucherScreen(type: 'سند قبض', onSaved: refresh);
-      case AppTab.payment:
+      case AppTab.payments:
         return VoucherScreen(type: 'سند صرف', onSaved: refresh);
       case AppTab.journal:
         return JournalScreen(onChanged: refresh);
       case AppTab.reports:
-        return const ReportsScreen();
+        return ReportsScreen(onChanged: refresh);
       case AppTab.settings:
         return SettingsScreen(onSaved: refresh);
     }
@@ -44,112 +48,82 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(child: Row(
-        children: [
-          sideBar(),
-          Expanded(child: Column(
-            children: [
-              topBar(),
-              Expanded(child: currentPage()),
-            ],
-          )),
-        ],
-      )),
+      body: SafeArea(child: Column(children: [
+        top(),
+        Expanded(child: page()),
+      ])),
+      bottomNavigationBar: nav(),
     );
   }
 
-  Widget sideBar() {
+  Widget top() {
     return Container(
-      width: 112,
-      margin: const EdgeInsets.all(10),
-      padding: const EdgeInsets.all(8),
-      decoration: panel(28),
-      child: Column(
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF00A8FF), primary]),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.account_balance, color: Colors.white, size: 32),
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
+      decoration: softCard(28),
+      child: Row(children: [
+        Container(
+          width: 54,
+          height: 54,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [primary, lavender]),
+            borderRadius: BorderRadius.circular(18),
           ),
-          const SizedBox(height: 16),
-          item('الرئيسية', Icons.dashboard, AppTab.dashboard),
-          item('الحسابات', Icons.account_tree, AppTab.accounts),
-          item('قبض', Icons.call_received, AppTab.receipt),
-          item('صرف', Icons.call_made, AppTab.payment),
-          item('قيود', Icons.edit_note, AppTab.journal),
-          item('تقارير', Icons.bar_chart, AppTab.reports),
-          const Spacer(),
-          item('إعدادات', Icons.settings, AppTab.settings),
-        ],
+          child: const Icon(Icons.account_balance, color: Colors.white, size: 30),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(store.settings.companyName, style: const TextStyle(color: darkText, fontSize: 22, fontWeight: FontWeight.w900)),
+          Text('السنة المالية ${store.settings.fiscalYear}', style: const TextStyle(color: softText, fontWeight: FontWeight.w800)),
+        ])),
+        IconButton(
+          onPressed: () => setState(() => tab = AppTab.settings),
+          icon: const Icon(Icons.settings, color: primary),
+        ),
+      ]),
+    );
+  }
+
+  Widget nav() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+      decoration: softCard(26),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          navItem('الرئيسية', Icons.dashboard_rounded, AppTab.dashboard),
+          navItem('الحسابات', Icons.account_tree_rounded, AppTab.accounts),
+          navItem('قبض', Icons.south_west_rounded, AppTab.receipts),
+          navItem('صرف', Icons.north_east_rounded, AppTab.payments),
+          navItem('قيود', Icons.receipt_long_rounded, AppTab.journal),
+          navItem('تقارير', Icons.bar_chart_rounded, AppTab.reports),
+        ]),
       ),
     );
   }
 
-  Widget item(String title, IconData icon, AppTab t) {
+  Widget navItem(String title, IconData icon, AppTab t) {
     final active = tab == t;
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       onTap: () => setState(() => tab = t),
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 7),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: active ? 104 : 82,
+        margin: const EdgeInsets.symmetric(horizontal: 3),
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
-          color: active ? primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
+          color: active ? primary.withOpacity(.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: active ? primary.withOpacity(.28) : Colors.transparent),
         ),
-        child: Column(
-          children: [
-            Icon(icon, color: active ? Colors.white : softText, size: 22),
-            Text(title, style: TextStyle(color: active ? Colors.white : softText, fontWeight: FontWeight.w900, fontSize: 11)),
-          ],
-        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: active ? primary : softText),
+          const SizedBox(height: 3),
+          Text(title, style: TextStyle(color: active ? primary : softText, fontWeight: FontWeight.w900, fontSize: 11)),
+        ]),
       ),
-    );
-  }
-
-  Widget topBar() {
-    return Container(
-      height: 88,
-      margin: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: panel(26),
-      child: Row(
-        children: [
-          Expanded(child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(store.settings.companyName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: darkText)),
-              Text('السنة المالية ${store.settings.fiscalYear} | برنامج محاسبي محلي', style: const TextStyle(color: softText, fontWeight: FontWeight.w800)),
-            ],
-          )),
-          summary('الأصول', money(store.typeBalance('أصول')), primary),
-          summary('الالتزامات', money(store.typeBalance('التزامات')), danger),
-          summary('الإيرادات', money(store.typeBalance('إيرادات')), success),
-        ],
-      ),
-    );
-  }
-
-  Widget summary(String label, String value, Color color) {
-    return Container(
-      width: 115,
-      margin: const EdgeInsetsDirectional.only(start: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7FCFF),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: border),
-      ),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(label, style: const TextStyle(color: softText, fontSize: 12, fontWeight: FontWeight.w900)),
-        FittedBox(child: Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w900))),
-      ]),
     );
   }
 }

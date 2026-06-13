@@ -5,6 +5,17 @@ import '../models/account.dart';
 import '../models/journal.dart';
 import '../models/settings.dart';
 
+
+class TrialBalanceRow {
+  final Account account;
+  final double debit;
+  final double credit;
+
+  TrialBalanceRow({required this.account, required this.debit, required this.credit});
+
+  double get difference => debit - credit;
+}
+
 class Store {
   static final Store instance = Store._();
   Store._();
@@ -104,7 +115,7 @@ class Store {
     }
   }
 
-  List<Account> postingAccounts() => accounts.where((a) => a.active && a.level >= 2).toList();
+  List<Account> postingAccounts() => accounts.where((a) => a.active && !accountHasChildren(a.id)).toList();
   List<Account> cashBankAccounts() => accounts.where((a) => a.active && (a.name.contains('صندوق') || a.name.contains('بنك') || a.code.startsWith('101'))).toList();
 
   int nextDocNumber(String type) {
@@ -206,27 +217,66 @@ class Store {
     }).toList()..sort((a, b) => a.date.compareTo(b.date));
   }
 
-  double debitFor(String accountId, {DateTime? from, DateTime? to}) => entriesBetween(from: from, to: to)
-      .expand((e) => e.lines)
-      .where((l) => l.accountId == accountId)
-      .fold<double>(0, (s, l) => s + l.debit);
+  List<String> descendantIds(String accountId) {
+    final ids = <String>{accountId};
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (final a in accounts) {
+        if (a.parentId.isNotEmpty && ids.contains(a.parentId) && ids.add(a.id)) {
+          changed = true;
+        }
+      }
+    }
+    return ids.toList();
+  }
 
-  double creditFor(String accountId, {DateTime? from, DateTime? to}) => entriesBetween(from: from, to: to)
-      .expand((e) => e.lines)
-      .where((l) => l.accountId == accountId)
-      .fold<double>(0, (s, l) => s + l.credit);
+  double debitFor(String accountId, {DateTime? from, DateTime? to, bool includeChildren = false}) {
+    final ids = includeChildren ? descendantIds(accountId).toSet() : <String>{accountId};
+    return entriesBetween(from: from, to: to)
+        .expand((e) => e.lines)
+        .where((l) => ids.contains(l.accountId))
+        .fold<double>(0, (s, l) => s + l.debit);
+  }
 
-  double balanceFor(String accountId, {DateTime? from, DateTime? to}) {
+  double creditFor(String accountId, {DateTime? from, DateTime? to, bool includeChildren = false}) {
+    final ids = includeChildren ? descendantIds(accountId).toSet() : <String>{accountId};
+    return entriesBetween(from: from, to: to)
+        .expand((e) => e.lines)
+        .where((l) => ids.contains(l.accountId))
+        .fold<double>(0, (s, l) => s + l.credit);
+  }
+
+  double balanceFor(String accountId, {DateTime? from, DateTime? to, bool includeChildren = false}) {
     final a = byId(accountId);
-    final d = debitFor(accountId, from: from, to: to);
-    final c = creditFor(accountId, from: from, to: to);
+    final d = debitFor(accountId, from: from, to: to, includeChildren: includeChildren);
+    final c = creditFor(accountId, from: from, to: to, includeChildren: includeChildren);
     if (a == null) return d - c;
     if (a.type == 'التزامات' || a.type == 'رأس المال' || a.type == 'إيرادات') return c - d;
     return d - c;
   }
 
+  List<TrialBalanceRow> trialBalanceRows({required String level, DateTime? from, DateTime? to}) {
+    final List<Account> list;
+    if (level == 'مستوى أول') {
+      list = accounts.where((a) => a.active && a.level == 1).toList();
+    } else if (level == 'مستوى ثاني') {
+      list = accounts.where((a) => a.active && a.level == 2).toList();
+    } else {
+      list = postingAccounts();
+    }
+    list.sort((a, b) => a.code.compareTo(b.code));
+
+    final aggregate = level != 'تفصيلي';
+    return list.map((a) => TrialBalanceRow(
+      account: a,
+      debit: debitFor(a.id, from: from, to: to, includeChildren: aggregate),
+      credit: creditFor(a.id, from: from, to: to, includeChildren: aggregate),
+    )).where((r) => r.debit != 0 || r.credit != 0 || level != 'تفصيلي').toList();
+  }
+
   double typeBalance(String type) {
-    return accounts.where((a) => a.type == type && a.level >= 2).fold<double>(0, (s, a) => s + balanceFor(a.id));
+    return postingAccounts().where((a) => a.type == type).fold<double>(0, (s, a) => s + balanceFor(a.id));
   }
 
   List<Account> seedAccounts() {

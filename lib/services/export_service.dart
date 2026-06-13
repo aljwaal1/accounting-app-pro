@@ -64,23 +64,24 @@ class ExportService {
     await Printing.sharePdf(bytes: await doc.save(), filename: '${entry.type}_${entry.number}.pdf');
   }
 
-  static Future<void> shareTrialBalancePdf({DateTime? from, DateTime? to}) async {
+  static Future<void> shareTrialBalancePdf({DateTime? from, DateTime? to, String level = 'تفصيلي'}) async {
     final doc = pw.Document();
     final fonts = await _fonts();
     final font = fonts.$1;
     final bold = fonts.$2;
 
-    final rows = store.postingAccounts().map((a) => [
-          a.code,
-          a.name,
-          a.type,
-          money(store.debitFor(a.id, from: from, to: to)),
-          money(store.creditFor(a.id, from: from, to: to)),
-          money(store.balanceFor(a.id, from: from, to: to)),
+    final trialRows = store.trialBalanceRows(level: level, from: from, to: to);
+    final rows = trialRows.map((r) => [
+          r.account.code,
+          r.account.name,
+          r.account.type,
+          money(r.debit),
+          money(r.credit),
+          money(r.difference),
         ]).toList();
 
-    final totalDebit = store.postingAccounts().fold<double>(0, (s, a) => s + store.debitFor(a.id, from: from, to: to));
-    final totalCredit = store.postingAccounts().fold<double>(0, (s, a) => s + store.creditFor(a.id, from: from, to: to));
+    final totalDebit = trialRows.fold<double>(0, (s, r) => s + r.debit);
+    final totalCredit = trialRows.fold<double>(0, (s, r) => s + r.credit);
     rows.add(['', 'الإجمالي', '', money(totalDebit), money(totalCredit), money(totalDebit - totalCredit)]);
 
     doc.addPage(pw.MultiPage(
@@ -88,7 +89,7 @@ class ExportService {
       textDirection: pw.TextDirection.rtl,
       theme: pw.ThemeData.withFont(base: font, bold: bold),
       build: (_) => [
-        header('ميزان المراجعة'),
+        header('ميزان المراجعة - $level'),
         periodText(from, to),
         pw.SizedBox(height: 12),
         pw.TableHelper.fromTextArray(

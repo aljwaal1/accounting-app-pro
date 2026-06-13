@@ -15,6 +15,7 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   final store = Store.instance;
   Account? selected;
+  String trialLevel = 'تفصيلي';
   DateTime? from;
   DateTime? to;
 
@@ -28,12 +29,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final accounts = store.postingAccounts();
+    final trialRows = store.trialBalanceRows(level: trialLevel, from: from, to: to);
 
     return ListView(padding: const EdgeInsets.all(12), children: [
       filterCard(),
       const SizedBox(height: 12),
       Row(children: [
-        Expanded(child: reportAction('ميزان PDF', Icons.picture_as_pdf_rounded, coral, () => ExportService.shareTrialBalancePdf(from: from, to: to))),
+        Expanded(child: reportAction('ميزان PDF', Icons.picture_as_pdf_rounded, coral, () => ExportService.shareTrialBalancePdf(from: from, to: to, level: trialLevel))),
         const SizedBox(width: 10),
         Expanded(child: reportAction('Excel', Icons.table_chart_rounded, mint, () => ExportService.shareExcel())),
       ]),
@@ -69,7 +71,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
         padding: const EdgeInsets.all(16),
         decoration: softCard(24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('ميزان المراجعة', style: TextStyle(color: darkText, fontSize: 20, fontWeight: FontWeight.w900)),
+          Row(children: [
+            const Expanded(child: Text('ميزان المراجعة', style: TextStyle(color: darkText, fontSize: 20, fontWeight: FontWeight.w900))),
+            const SizedBox(width: 8),
+            DropdownButton<String>(
+              value: trialLevel,
+              items: const [
+                DropdownMenuItem(value: 'تفصيلي', child: Text('تفصيلي')),
+                DropdownMenuItem(value: 'مستوى ثاني', child: Text('مستوى ثاني')),
+                DropdownMenuItem(value: 'مستوى أول', child: Text('مستوى أول')),
+              ],
+              onChanged: (v) => setState(() => trialLevel = v ?? 'تفصيلي'),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          const Text('يعرض كل مستوى وحده حتى لا تتكرر أرصدة الحسابات الأب مع الحسابات الفرعية.', style: TextStyle(color: softText, fontSize: 12, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -77,12 +93,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
               DataColumn(label: Text('الحساب')),
               DataColumn(label: Text('مدين')),
               DataColumn(label: Text('دائن')),
-              DataColumn(label: Text('الرصيد')),
-            ], rows: accounts.map((a)=>DataRow(cells: [
-              DataCell(Text(a.display)),
-              DataCell(Text(money(store.debitFor(a.id, from: from, to: to)))),
-              DataCell(Text(money(store.creditFor(a.id, from: from, to: to)))),
-              DataCell(Text(money(store.balanceFor(a.id, from: from, to: to)))),
+              DataColumn(label: Text('الفرق')),
+            ], rows: trialRows.map((r)=>DataRow(cells: [
+              DataCell(Text(r.account.display)),
+              DataCell(Text(money(r.debit))),
+              DataCell(Text(money(r.credit))),
+              DataCell(Text(money(r.difference))),
             ])).toList()),
           ),
         ]),

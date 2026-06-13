@@ -3,6 +3,7 @@ import '../models/account.dart';
 import '../models/journal.dart';
 import '../services/store.dart';
 import '../services/export_service.dart';
+import 'voucher_preview_screen.dart';
 import '../widgets/theme.dart';
 
 class VoucherScreen extends StatefulWidget {
@@ -122,7 +123,18 @@ class _VoucherScreenState extends State<VoucherScreen> {
         title: const Text('تم الحفظ'),
         content: Text('تم حفظ ${widget.type} رقم ${entry.number} وتوليد القيد المحاسبي تلقائيًا.'),
         actions: [
-          TextButton(onPressed: ()=>Navigator.pop(context), child: const Text('إغلاق')),
+          TextButton(onPressed: ()=>Navigator.pop(context), child: const Text('لا، لاحقًا')),
+          TextButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => Directionality(
+                textDirection: TextDirection.rtl,
+                child: VoucherPreviewScreen(entry: entry),
+              )));
+            },
+            icon: const Icon(Icons.visibility_rounded),
+            label: const Text('معاينة السند'),
+          ),
           FilledButton.icon(
             onPressed: () async {
               Navigator.pop(context);

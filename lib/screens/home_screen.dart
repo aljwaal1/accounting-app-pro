@@ -66,8 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
           width: 54,
           height: 54,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [primary, lavender]),
+            gradient: brandGradient(),
             borderRadius: BorderRadius.circular(18),
+            boxShadow: [BoxShadow(color: primary.withOpacity(.35), blurRadius: 16, offset: const Offset(0, 6))],
           ),
           child: const Icon(Icons.account_balance, color: Colors.white, size: 30),
         ),

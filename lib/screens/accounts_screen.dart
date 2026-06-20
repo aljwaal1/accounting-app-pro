@@ -38,11 +38,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 90),
-            itemCount: list.length,
-            itemBuilder: (_, i) => accountCard(list[i]),
-          ),
+          child: list.isEmpty
+              ? emptyState('لا توجد حسابات مطابقة', Icons.search_off_rounded)
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 90),
+                  itemCount: list.length,
+                  itemBuilder: (_, i) => accountCard(list[i]),
+                ),
         ),
       ]),
     );
@@ -50,7 +52,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   Widget accountCard(Account a) {
     final bal = store.balanceFor(a.id);
-    final color = a.type == 'أصول' ? primary : a.type == 'مصاريف' ? coral : a.type == 'إيرادات' ? mint : lavender;
+    final color = colorForType(a.type);
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onLongPress: () => editAccount(a),
@@ -63,7 +65,12 @@ class _AccountsScreenState extends State<AccountsScreen> {
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(a.display, style: TextStyle(color: a.active ? darkText : softText, fontWeight: FontWeight.w900, fontSize: 15)),
-            Text('${a.type} | مستوى ${a.level}${a.active ? '' : ' | موقوف'}', style: const TextStyle(color: softText, fontWeight: FontWeight.w700, fontSize: 12)),
+            const SizedBox(height: 4),
+            Wrap(spacing: 6, runSpacing: 4, children: [
+              tag(a.type, color),
+              tag('مستوى ${a.level}', softText),
+              if (!a.active) tag('موقوف', coral),
+            ]),
           ])),
           Text(money(bal), style: TextStyle(color: color, fontWeight: FontWeight.w900)),
           IconButton(onPressed: () => editAccount(a), icon: const Icon(Icons.more_vert_rounded, color: softText)),

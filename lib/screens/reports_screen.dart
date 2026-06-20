@@ -3,6 +3,7 @@ import '../models/account.dart';
 import '../services/export_service.dart';
 import '../services/store.dart';
 import '../widgets/theme.dart';
+import 'statement_preview_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   final VoidCallback onChanged;
@@ -50,7 +51,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
         padding: const EdgeInsets.all(16),
         decoration: softCard(24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('كشف حساب PDF', style: TextStyle(color: darkText, fontSize: 20, fontWeight: FontWeight.w900)),
+          Row(children: [
+            CircleAvatar(backgroundColor: primary.withOpacity(.12), child: const Icon(Icons.receipt_long_rounded, color: primary)),
+            const SizedBox(width: 10),
+            const Expanded(child: Text('كشف حساب', style: TextStyle(color: darkText, fontSize: 20, fontWeight: FontWeight.w900))),
+          ]),
+          const SizedBox(height: 4),
+          const Text('يعرض رصيدًا افتتاحيًا وحركة كل مستند ورصيدًا ختاميًا.', style: TextStyle(color: softText, fontSize: 12, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           DropdownButtonFormField<Account>(
             value: selected,
@@ -59,11 +66,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
             decoration: fieldDec('اختر الحساب', Icons.account_tree_rounded),
           ),
           const SizedBox(height: 12),
-          SizedBox(width: double.infinity, child: FilledButton.icon(
-            onPressed: selected == null ? null : () => ExportService.shareAccountStatementPdf(selected!, from: from, to: to),
-            icon: const Icon(Icons.share_rounded),
-            label: const Text('مشاركة كشف الحساب PDF'),
-          )),
+          Row(children: [
+            Expanded(child: OutlinedButton.icon(
+              onPressed: selected == null ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => Directionality(
+                textDirection: TextDirection.rtl,
+                child: StatementPreviewScreen(account: selected!, from: from, to: to),
+              ))),
+              icon: const Icon(Icons.visibility_rounded),
+              label: const Text('معاينة الكشف'),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: FilledButton.icon(
+              onPressed: selected == null ? null : () => ExportService.shareAccountStatementPdf(selected!, from: from, to: to),
+              icon: const Icon(Icons.picture_as_pdf_rounded),
+              label: const Text('مشاركة PDF'),
+            )),
+          ]),
         ]),
       ),
       const SizedBox(height: 12),
@@ -89,17 +107,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: DataTable(columns: const [
-              DataColumn(label: Text('الحساب')),
-              DataColumn(label: Text('مدين')),
-              DataColumn(label: Text('دائن')),
-              DataColumn(label: Text('الفرق')),
-            ], rows: trialRows.map((r)=>DataRow(cells: [
-              DataCell(Text(r.account.display)),
-              DataCell(Text(money(r.debit))),
-              DataCell(Text(money(r.credit))),
-              DataCell(Text(money(r.difference))),
-            ])).toList()),
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(primaryLight),
+              columns: const [
+                DataColumn(label: Text('الحساب', style: TextStyle(color: primaryDark, fontWeight: FontWeight.w900))),
+                DataColumn(label: Text('مدين', style: TextStyle(color: primaryDark, fontWeight: FontWeight.w900))),
+                DataColumn(label: Text('دائن', style: TextStyle(color: primaryDark, fontWeight: FontWeight.w900))),
+                DataColumn(label: Text('الفرق', style: TextStyle(color: primaryDark, fontWeight: FontWeight.w900))),
+              ],
+              rows: trialRows.map((r)=>DataRow(cells: [
+                DataCell(Text(r.account.display, style: const TextStyle(fontWeight: FontWeight.w700))),
+                DataCell(Text(money(r.debit), style: const TextStyle(color: debitColor, fontWeight: FontWeight.w800))),
+                DataCell(Text(money(r.credit), style: const TextStyle(color: creditColor, fontWeight: FontWeight.w800))),
+                DataCell(Text(money(r.difference), style: TextStyle(color: r.difference == 0 ? softText : gold, fontWeight: FontWeight.w900))),
+              ])).toList(),
+            ),
           ),
         ]),
       ),

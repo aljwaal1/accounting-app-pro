@@ -247,6 +247,14 @@ class Store {
         .fold<double>(0, (s, l) => s + l.credit);
   }
 
+  /// الرصيد الافتتاحي لحساب معيّن: مجموع كل الحركات السابقة لتاريخ بداية الفترة.
+  /// إن لم يتم تحديد تاريخ بداية، يكون الرصيد الافتتاحي صفرًا لأن كل الحركات مشمولة أصلًا.
+  double openingBalanceFor(String accountId, {DateTime? from}) {
+    if (from == null) return 0;
+    final dayBefore = from.subtract(const Duration(days: 1));
+    return balanceFor(accountId, from: null, to: dayBefore);
+  }
+
   double balanceFor(String accountId, {DateTime? from, DateTime? to, bool includeChildren = false}) {
     final a = byId(accountId);
     final d = debitFor(accountId, from: from, to: to, includeChildren: includeChildren);

@@ -26,7 +26,7 @@ class _JournalScreenState extends State<JournalScreen> {
         icon: const Icon(Icons.add_rounded),
         label: const Text('قيد يدوي'),
       ),
-      body: list.isEmpty ? emptyState('لا توجد قيود بعد') : ListView.builder(
+      body: list.isEmpty ? emptyState('لا توجد قيود بعد', Icons.receipt_long_rounded) : ListView.builder(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
         itemCount: list.length,
         itemBuilder: (_, i) {
@@ -40,14 +40,14 @@ class _JournalScreenState extends State<JournalScreen> {
               children: [
                 ...e.lines.map((l)=>ListTile(
                   title: Text('${l.accountCode} - ${l.accountName}'),
-                  trailing: Text('مدين ${money(l.debit)} | دائن ${money(l.credit)}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                  trailing: Text.rich(TextSpan(children: [
+                    TextSpan(text: 'مدين ${money(l.debit)}  ', style: const TextStyle(color: debitColor, fontWeight: FontWeight.w800)),
+                    TextSpan(text: 'دائن ${money(l.credit)}', style: const TextStyle(color: creditColor, fontWeight: FontWeight.w800)),
+                  ])),
                 )),
                 TextButton.icon(
-                  onPressed: () async {
-                    await store.deleteEntry(e.id);
-                    setState(() {});
-                    widget.onChanged();
-                  },
+                  onPressed: () => confirmDelete(e),
+                  style: TextButton.styleFrom(foregroundColor: coral),
                   icon: const Icon(Icons.delete_outline_rounded),
                   label: const Text('حذف القيد'),
                 ),
@@ -57,6 +57,29 @@ class _JournalScreenState extends State<JournalScreen> {
         },
       ),
     );
+  }
+
+  Future<void> confirmDelete(JournalEntry e) async {
+    final ok = await showDialog<bool>(context: context, builder: (_) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('تأكيد الحذف'),
+        content: Text('هل تريد حذف ${e.type} رقم ${e.number}؟ لا يمكن التراجع عن هذا الإجراء.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: coral),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    ));
+    if (ok != true) return;
+    await store.deleteEntry(e.id);
+    if (!mounted) return;
+    setState(() {});
+    widget.onChanged();
   }
 
   Future<void> addJournal() async {

@@ -11,6 +11,19 @@ import '../models/journal.dart';
 import 'store.dart';
 import '../widgets/theme.dart';
 
+/// ====== هوية ملفات PDF (مطابقة لهوية التطبيق الجديدة) ======
+final _pdfPrimary = PdfColor.fromHex('#0E7C66');
+final _pdfPrimaryDark = PdfColor.fromHex('#0B5C4C');
+final _pdfPrimaryLight = PdfColor.fromHex('#E3F3EE');
+final _pdfGold = PdfColor.fromHex('#C79A2E');
+final _pdfGoldLight = PdfColor.fromHex('#FBF1DC');
+final _pdfDebit = PdfColor.fromHex('#CC4B4B');
+final _pdfCredit = PdfColor.fromHex('#1E9E6B');
+final _pdfLine = PdfColor.fromHex('#E2E9E7');
+final _pdfText = PdfColor.fromHex('#152722');
+final _pdfSoft = PdfColor.fromHex('#6B7C78');
+final _pdfZebra = PdfColor.fromHex('#F6F9F8');
+
 class ExportService {
   static final store = Store.instance;
 
@@ -20,50 +33,71 @@ class ExportService {
     return (font, bold);
   }
 
+  // ===================== سند قبض / صرف =====================
   static Future<void> shareVoucherPdf(JournalEntry entry) async {
     final doc = pw.Document();
     final fonts = await _fonts();
     final font = fonts.$1;
     final bold = fonts.$2;
+    final accent = entry.type == 'سند قبض' ? _pdfCredit : _pdfDebit;
 
     doc.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
       textDirection: pw.TextDirection.rtl,
       theme: pw.ThemeData.withFont(base: font, bold: bold),
+      margin: const pw.EdgeInsets.fromLTRB(28, 28, 28, 24),
       build: (_) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        header(entry.type),
+        header(entry.type, accent: accent),
         pw.SizedBox(height: 14),
         pw.Container(
-          padding: const pw.EdgeInsets.all(12),
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(14),
           decoration: box(),
-          child: pw.Column(children: [
+          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
             infoRow('رقم السند', entry.number.toString(), 'التاريخ', dateText(entry.date), bold),
+            pw.SizedBox(height: 6),
             infoRow('طريقة الدفع', entry.method.isEmpty ? '-' : entry.method, 'رقم الشيك', entry.chequeNumber.isEmpty ? '-' : entry.chequeNumber, bold),
-            pw.SizedBox(height: 8),
-            pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text('البيان: ${entry.description}', style: pw.TextStyle(font: bold, fontSize: 12))),
+            pw.SizedBox(height: 10),
+            pw.Container(height: 1, color: _pdfLine),
+            pw.SizedBox(height: 10),
+            pw.Align(alignment: pw.Alignment.centerRight, child: pw.Text('البيان: ${entry.description}', style: pw.TextStyle(font: bold, fontSize: 12, color: _pdfText))),
           ]),
         ),
-        pw.SizedBox(height: 12),
-        pw.TableHelper.fromTextArray(
-          headers: ['الحساب', 'مدين', 'دائن', 'ملاحظة'],
-          data: entry.lines.map((l) => ['${l.accountCode} - ${l.accountName}', money(l.debit), money(l.credit), l.note]).toList(),
-          headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 10),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-          cellStyle: const pw.TextStyle(fontSize: 9),
-          cellAlignment: pw.Alignment.centerRight,
+        pw.SizedBox(height: 14),
+        styledTable(
+          headers: const ['الحساب', 'مدين', 'دائن', 'ملاحظة'],
+          rows: entry.lines.map((l) => [
+            '${l.accountCode} - ${l.accountName}',
+            l.debit == 0 ? '-' : money(l.debit),
+            l.credit == 0 ? '-' : money(l.credit),
+            l.note.isEmpty ? '-' : l.note,
+          ]).toList(),
+          bold: bold,
         ),
-        pw.SizedBox(height: 24),
+        pw.SizedBox(height: 8),
+        totalsBar('الإجمالي', entry.totalDebit, entry.totalCredit, bold),
+        pw.SizedBox(height: 30),
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
           signatureBox('المحاسب'),
           signatureBox('المستلم / الدافع'),
           signatureBox('المدير'),
         ]),
+        pw.SizedBox(height: 18),
+        pw.Container(
+          padding: const pw.EdgeInsets.only(top: 6),
+          decoration: pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: _pdfLine, width: .7))),
+          child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+            pw.Text('${store.settings.companyName} — المحاسب الذكي', style: pw.TextStyle(fontSize: 7.5, color: _pdfSoft)),
+            pw.Text('تم الإصدار: ${_now()}', style: pw.TextStyle(fontSize: 7.5, color: _pdfSoft)),
+          ]),
+        ),
       ]),
     ));
 
     await Printing.sharePdf(bytes: await doc.save(), filename: '${entry.type}_${entry.number}.pdf');
   }
 
+  // ===================== ميزان المراجعة =====================
   static Future<void> shareTrialBalancePdf({DateTime? from, DateTime? to, String level = 'تفصيلي'}) async {
     final doc = pw.Document();
     final fonts = await _fonts();
@@ -82,52 +116,54 @@ class ExportService {
 
     final totalDebit = trialRows.fold<double>(0, (s, r) => s + r.debit);
     final totalCredit = trialRows.fold<double>(0, (s, r) => s + r.credit);
-    rows.add(['', 'الإجمالي', '', money(totalDebit), money(totalCredit), money(totalDebit - totalCredit)]);
 
     doc.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       textDirection: pw.TextDirection.rtl,
       theme: pw.ThemeData.withFont(base: font, bold: bold),
+      margin: const pw.EdgeInsets.fromLTRB(26, 26, 26, 26),
+      footer: (ctx) => pdfFooter(ctx, bold),
       build: (_) => [
         header('ميزان المراجعة - $level'),
         periodText(from, to),
-        pw.SizedBox(height: 12),
+        pw.SizedBox(height: 10),
         pw.TableHelper.fromTextArray(
-          headers: ['رقم الحساب', 'اسم الحساب', 'النوع', 'مدين', 'دائن', 'الفرق'],
+          headers: const ['رقم الحساب', 'اسم الحساب', 'النوع', 'مدين', 'دائن', 'الفرق'],
           data: rows,
           headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 9),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-          cellStyle: const pw.TextStyle(fontSize: 8),
+          headerDecoration: pw.BoxDecoration(color: _pdfPrimaryDark, borderRadius: pw.BorderRadius.circular(4)),
+          cellStyle: pw.TextStyle(font: font, fontSize: 8, color: _pdfText),
           cellAlignment: pw.Alignment.centerRight,
+          oddRowDecoration: pw.BoxDecoration(color: _pdfZebra),
+          cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         ),
+        pw.SizedBox(height: 10),
+        totalsBar('إجمالي الميزان', totalDebit, totalCredit, bold),
       ],
     ));
 
     await Printing.sharePdf(bytes: await doc.save(), filename: 'trial_balance.pdf');
   }
 
+  // ===================== كشف حساب (مُعاد تصميمه بالكامل) =====================
   static Future<void> shareAccountStatementPdf(Account a, {DateTime? from, DateTime? to}) async {
     final doc = pw.Document();
     final fonts = await _fonts();
     final font = fonts.$1;
     final bold = fonts.$2;
 
-    double running = 0;
+    final opening = store.openingBalanceFor(a.id, from: from);
+    double running = opening;
     final related = store.entriesBetween(from: from, to: to).where((e) => e.lines.any((l) => l.accountId == a.id)).toList();
 
-    final rows = <List<String>>[];
+    final rows = <List<dynamic>>[];
+    double totalDebit = 0, totalCredit = 0;
     for (final e in related) {
       for (final l in e.lines.where((x) => x.accountId == a.id)) {
         running += l.debit - l.credit;
-        rows.add([
-          dateText(e.date),
-          e.type,
-          e.number.toString(),
-          e.description,
-          money(l.debit),
-          money(l.credit),
-          money(running),
-        ]);
+        totalDebit += l.debit;
+        totalCredit += l.credit;
+        rows.add([dateText(e.date), '${e.type} ${e.number}', e.description, l.debit, l.credit, running]);
       }
     }
 
@@ -135,30 +171,126 @@ class ExportService {
       pageFormat: PdfPageFormat.a4,
       textDirection: pw.TextDirection.rtl,
       theme: pw.ThemeData.withFont(base: font, bold: bold),
+      margin: const pw.EdgeInsets.fromLTRB(26, 26, 26, 26),
+      footer: (ctx) => pdfFooter(ctx, bold),
       build: (_) => [
         header('كشف حساب'),
         periodText(from, to),
+        pw.SizedBox(height: 10),
+        // بطاقة معلومات الحساب
         pw.Container(
           width: double.infinity,
-          padding: const pw.EdgeInsets.all(10),
-          decoration: box(),
-          child: pw.Text(a.display, style: pw.TextStyle(font: bold, fontSize: 15)),
+          padding: const pw.EdgeInsets.all(12),
+          decoration: pw.BoxDecoration(
+            color: _pdfPrimaryLight,
+            borderRadius: pw.BorderRadius.circular(8),
+            border: pw.Border.all(color: _pdfPrimary.shade(.15)),
+          ),
+          child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+            pw.Text(a.display, style: pw.TextStyle(font: bold, fontSize: 14, color: _pdfPrimaryDark)),
+            pw.Text(a.type, style: pw.TextStyle(font: bold, fontSize: 11, color: _pdfPrimaryDark)),
+          ]),
         ),
+        pw.SizedBox(height: 10),
+        // ملخص الأرصدة
+        pw.Row(children: [
+          summaryBox('رصيد افتتاحي', opening, PdfColor.fromHex('#5B5FCF'), bold),
+          pw.SizedBox(width: 8),
+          summaryBox('صافي الحركة', totalDebit - totalCredit, _pdfPrimary, bold),
+          pw.SizedBox(width: 8),
+          summaryBox('رصيد ختامي', running, _pdfGold, bold),
+        ]),
         pw.SizedBox(height: 12),
-        pw.TableHelper.fromTextArray(
-          headers: ['التاريخ', 'النوع', 'الرقم', 'البيان', 'مدين', 'دائن', 'الرصيد'],
-          data: rows,
-          headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-          cellStyle: const pw.TextStyle(fontSize: 7),
-          cellAlignment: pw.Alignment.centerRight,
-        ),
+        statementTable(rows, opening, totalDebit, totalCredit, running, bold, font),
       ],
     ));
 
     await Printing.sharePdf(bytes: await doc.save(), filename: 'statement_${a.code}.pdf');
   }
 
+  static pw.Widget summaryBox(String title, double value, PdfColor color, pw.Font bold) => pw.Expanded(
+        child: pw.Container(
+          padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.white,
+            borderRadius: pw.BorderRadius.circular(8),
+            border: pw.Border.all(color: _pdfLine),
+          ),
+          child: pw.Column(children: [
+            pw.Text(title, style: pw.TextStyle(font: bold, fontSize: 8.5, color: _pdfSoft)),
+            pw.SizedBox(height: 4),
+            pw.Text(money(value), style: pw.TextStyle(font: bold, fontSize: 12, color: color)),
+          ]),
+        ),
+      );
+
+  static pw.Widget statementTable(List<List<dynamic>> rows, double opening, double totalDebit, double totalCredit, double closing, pw.Font bold, pw.Font font) {
+    pw.TextStyle h = pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 9);
+    pw.TextStyle c = pw.TextStyle(font: font, color: _pdfText, fontSize: 8.5);
+
+    pw.Widget cell(String text, {pw.TextStyle? style, pw.Alignment align = pw.Alignment.centerRight}) => pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+          child: pw.Align(alignment: align, child: pw.Text(text, style: style ?? c)),
+        );
+
+    final tableRows = <pw.TableRow>[
+      pw.TableRow(decoration: pw.BoxDecoration(color: _pdfPrimaryDark), children: [
+        cell('التاريخ', style: h, align: pw.Alignment.center),
+        cell('المستند', style: h, align: pw.Alignment.center),
+        cell('البيان', style: h, align: pw.Alignment.centerRight),
+        cell('مدين', style: h, align: pw.Alignment.center),
+        cell('دائن', style: h, align: pw.Alignment.center),
+        cell('الرصيد', style: h, align: pw.Alignment.center),
+      ]),
+      pw.TableRow(decoration: pw.BoxDecoration(color: _pdfGoldLight), children: [
+        cell('', align: pw.Alignment.center),
+        cell('', align: pw.Alignment.center),
+        cell('رصيد افتتاحي', style: pw.TextStyle(font: bold, color: _pdfText, fontSize: 8.5)),
+        cell('-', align: pw.Alignment.center),
+        cell('-', align: pw.Alignment.center),
+        cell(money(opening), style: pw.TextStyle(font: bold, color: PdfColor.fromHex('#5B5FCF'), fontSize: 8.5), align: pw.Alignment.center),
+      ]),
+    ];
+
+    for (int i = 0; i < rows.length; i++) {
+      final r = rows[i];
+      final debit = r[3] as double;
+      final credit = r[4] as double;
+      final bg = i % 2 == 1 ? _pdfZebra : PdfColors.white;
+      tableRows.add(pw.TableRow(decoration: pw.BoxDecoration(color: bg), children: [
+        cell(r[0] as String, align: pw.Alignment.center),
+        cell(r[1] as String, align: pw.Alignment.center),
+        cell(r[2] as String),
+        cell(debit == 0 ? '-' : money(debit), style: pw.TextStyle(font: font, color: debit == 0 ? _pdfSoft : _pdfDebit, fontSize: 8.5), align: pw.Alignment.center),
+        cell(credit == 0 ? '-' : money(credit), style: pw.TextStyle(font: font, color: credit == 0 ? _pdfSoft : _pdfCredit, fontSize: 8.5), align: pw.Alignment.center),
+        cell(money(r[5] as double), style: pw.TextStyle(font: bold, color: _pdfText, fontSize: 8.5), align: pw.Alignment.center),
+      ]));
+    }
+
+    tableRows.add(pw.TableRow(decoration: pw.BoxDecoration(color: _pdfGold.shade(.12), border: pw.Border(top: pw.BorderSide(color: _pdfGold, width: 1))), children: [
+      cell('', align: pw.Alignment.center),
+      cell('', align: pw.Alignment.center),
+      cell('الإجمالي / الرصيد الختامي', style: pw.TextStyle(font: bold, color: _pdfPrimaryDark, fontSize: 9)),
+      cell(money(totalDebit), style: pw.TextStyle(font: bold, color: _pdfDebit, fontSize: 9), align: pw.Alignment.center),
+      cell(money(totalCredit), style: pw.TextStyle(font: bold, color: _pdfCredit, fontSize: 9), align: pw.Alignment.center),
+      cell(money(closing), style: pw.TextStyle(font: bold, color: _pdfGold, fontSize: 9.5), align: pw.Alignment.center),
+    ]));
+
+    return pw.Table(
+      border: pw.TableBorder.all(color: _pdfLine, width: .6),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(1.6),
+        1: pw.FlexColumnWidth(1.6),
+        2: pw.FlexColumnWidth(3.2),
+        3: pw.FlexColumnWidth(1.6),
+        4: pw.FlexColumnWidth(1.6),
+        5: pw.FlexColumnWidth(1.8),
+      },
+      children: tableRows,
+    );
+  }
+
+  // ===================== دفتر اليومية =====================
   static Future<void> shareJournalPdf({DateTime? from, DateTime? to}) async {
     final doc = pw.Document();
     final fonts = await _fonts();
@@ -170,24 +302,34 @@ class ExportService {
       pageFormat: PdfPageFormat.a4,
       textDirection: pw.TextDirection.rtl,
       theme: pw.ThemeData.withFont(base: font, bold: bold),
+      margin: const pw.EdgeInsets.fromLTRB(26, 26, 26, 26),
+      footer: (ctx) => pdfFooter(ctx, bold),
       build: (_) => [
         header('دفتر اليومية'),
         periodText(from, to),
         pw.SizedBox(height: 8),
         ...list.map((e) => pw.Container(
-              margin: const pw.EdgeInsets.only(bottom: 8),
-              padding: const pw.EdgeInsets.all(8),
+              margin: const pw.EdgeInsets.only(bottom: 10),
+              padding: const pw.EdgeInsets.all(10),
               decoration: box(),
               child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                pw.Text('${e.type} رقم ${e.number} - ${dateText(e.date)} - ${e.description}', style: pw.TextStyle(font: bold, fontSize: 10)),
-                pw.SizedBox(height: 5),
+                pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                  pw.Text('${e.type} رقم ${e.number}', style: pw.TextStyle(font: bold, fontSize: 10.5, color: _pdfPrimaryDark)),
+                  pw.Text(dateText(e.date), style: pw.TextStyle(font: bold, fontSize: 9.5, color: _pdfSoft)),
+                ]),
+                if (e.description.isNotEmpty) pw.Padding(
+                  padding: const pw.EdgeInsets.only(top: 2, bottom: 6),
+                  child: pw.Text(e.description, style: pw.TextStyle(font: font, fontSize: 9, color: _pdfSoft)),
+                ),
                 pw.TableHelper.fromTextArray(
-                  headers: ['الحساب', 'مدين', 'دائن'],
-                  data: e.lines.map((l) => ['${l.accountCode} - ${l.accountName}', money(l.debit), money(l.credit)]).toList(),
+                  headers: const ['الحساب', 'مدين', 'دائن'],
+                  data: e.lines.map((l) => ['${l.accountCode} - ${l.accountName}', l.debit == 0 ? '-' : money(l.debit), l.credit == 0 ? '-' : money(l.credit)]).toList(),
                   headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 8),
-                  headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-                  cellStyle: const pw.TextStyle(fontSize: 7),
+                  headerDecoration: pw.BoxDecoration(color: _pdfPrimary),
+                  cellStyle: pw.TextStyle(font: font, fontSize: 7.5, color: _pdfText),
                   cellAlignment: pw.Alignment.centerRight,
+                  oddRowDecoration: pw.BoxDecoration(color: _pdfZebra),
+                  cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 5),
                 ),
               ]),
             )),
@@ -197,6 +339,7 @@ class ExportService {
     await Printing.sharePdf(bytes: await doc.save(), filename: 'journal.pdf');
   }
 
+  // ===================== تقرير الصندوق والبنك =====================
   static Future<void> shareCashBankReportPdf({DateTime? from, DateTime? to}) async {
     final doc = pw.Document();
     final fonts = await _fonts();
@@ -204,27 +347,44 @@ class ExportService {
     final bold = fonts.$2;
     final accounts = store.cashBankAccounts();
 
+    final rows = accounts.map((a) => [
+          a.code,
+          a.name,
+          money(store.debitFor(a.id, from: from, to: to)),
+          money(store.creditFor(a.id, from: from, to: to)),
+          money(store.balanceFor(a.id, from: from, to: to)),
+        ]).toList();
+    final totalBalance = accounts.fold<double>(0, (s, a) => s + store.balanceFor(a.id, from: from, to: to));
+
     doc.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       textDirection: pw.TextDirection.rtl,
       theme: pw.ThemeData.withFont(base: font, bold: bold),
+      margin: const pw.EdgeInsets.fromLTRB(26, 26, 26, 26),
+      footer: (ctx) => pdfFooter(ctx, bold),
       build: (_) => [
         header('تقرير الصندوق والبنك'),
         periodText(from, to),
-        pw.SizedBox(height: 12),
+        pw.SizedBox(height: 10),
         pw.TableHelper.fromTextArray(
-          headers: ['رقم الحساب', 'اسم الحساب', 'مدين', 'دائن', 'الرصيد'],
-          data: accounts.map((a) => [
-            a.code,
-            a.name,
-            money(store.debitFor(a.id, from: from, to: to)),
-            money(store.creditFor(a.id, from: from, to: to)),
-            money(store.balanceFor(a.id, from: from, to: to)),
-          ]).toList(),
+          headers: const ['رقم الحساب', 'اسم الحساب', 'مدين', 'دائن', 'الرصيد'],
+          data: rows,
           headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 9),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey700),
-          cellStyle: const pw.TextStyle(fontSize: 8),
+          headerDecoration: pw.BoxDecoration(color: _pdfPrimaryDark),
+          cellStyle: pw.TextStyle(font: font, fontSize: 8, color: _pdfText),
           cellAlignment: pw.Alignment.centerRight,
+          oddRowDecoration: pw.BoxDecoration(color: _pdfZebra),
+          cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        ),
+        pw.SizedBox(height: 10),
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(10),
+          decoration: pw.BoxDecoration(color: _pdfGoldLight, borderRadius: pw.BorderRadius.circular(8)),
+          child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+            pw.Text('إجمالي السيولة (صندوق وبنك)', style: pw.TextStyle(font: bold, fontSize: 10.5, color: _pdfPrimaryDark)),
+            pw.Text(money(totalBalance), style: pw.TextStyle(font: bold, fontSize: 12, color: _pdfGold)),
+          ]),
         ),
       ],
     ));
@@ -232,49 +392,110 @@ class ExportService {
     await Printing.sharePdf(bytes: await doc.save(), filename: 'cash_bank_report.pdf');
   }
 
-  static pw.Widget header(String title) {
+  // ===================== عناصر مشتركة للتصميم =====================
+
+  static pw.Widget header(String title, {PdfColor? accent}) {
     final s = store.settings;
+    final a = accent ?? _pdfPrimary;
     return pw.Container(
       width: double.infinity,
-      padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
-        color: PdfColor.fromHex('#EAF5FF'),
-        borderRadius: pw.BorderRadius.circular(10),
-        border: pw.Border.all(color: PdfColor.fromHex('#CFE4F6')),
+        color: _pdfPrimaryLight,
+        borderRadius: pw.BorderRadius.circular(12),
+        border: pw.Border.all(color: _pdfPrimary.shade(.2)),
       ),
-      child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text(s.companyName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
-        pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 22)),
-        pw.Text('السنة المالية: ${s.fiscalYear}'),
-        if (s.phone.isNotEmpty || s.address.isNotEmpty) pw.Text('${s.phone} ${s.address}'.trim()),
+      child: pw.Row(children: [
+        pw.Container(width: 6, height: 70, decoration: pw.BoxDecoration(color: a, borderRadius: const pw.BorderRadius.horizontal(right: pw.Radius.circular(12)))),
+        pw.Expanded(
+          child: pw.Padding(
+            padding: const pw.EdgeInsets.all(12),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+              pw.Text(s.companyName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 15, color: _pdfPrimaryDark)),
+              pw.SizedBox(height: 2),
+              pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 20, color: _pdfText)),
+              pw.SizedBox(height: 2),
+              pw.Text(
+                'السنة المالية: ${s.fiscalYear}${(s.phone.isNotEmpty || s.address.isNotEmpty) ? '   |   ${s.phone} ${s.address}'.trim() : ''}',
+                style: pw.TextStyle(fontSize: 9, color: _pdfSoft),
+              ),
+            ]),
+          ),
+        ),
       ]),
     );
   }
 
+  static pw.Widget pdfFooter(pw.Context ctx, pw.Font bold) => pw.Container(
+        margin: const pw.EdgeInsets.only(top: 8),
+        padding: const pw.EdgeInsets.only(top: 6),
+        decoration: pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: _pdfLine, width: .7))),
+        child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+          pw.Text('${store.settings.companyName} — المحاسب الذكي', style: pw.TextStyle(fontSize: 7.5, color: _pdfSoft)),
+          pw.Text('تم الإصدار: ${_now()}', style: pw.TextStyle(fontSize: 7.5, color: _pdfSoft)),
+          pw.Text('صفحة ${ctx.pageNumber} من ${ctx.pagesCount}', style: pw.TextStyle(font: bold, fontSize: 7.5, color: _pdfSoft)),
+        ]),
+      );
+
+  static String _now() {
+    final d = DateTime.now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${d.year}/${two(d.month)}/${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
+  }
+
   static pw.Widget periodText(DateTime? from, DateTime? to) => pw.Padding(
-        padding: const pw.EdgeInsets.only(top: 8, bottom: 4),
-        child: pw.Text('الفترة: ${from == null ? 'البداية' : _date(from)} إلى ${to == null ? 'النهاية' : _date(to)}'),
+        padding: const pw.EdgeInsets.only(top: 10, bottom: 2),
+        child: pw.Text('الفترة: ${from == null ? 'بداية النشاط' : _date(from)} إلى ${to == null ? 'تاريخ اليوم' : _date(to)}', style: pw.TextStyle(fontSize: 9.5, color: _pdfSoft)),
       );
 
   static String _date(DateTime d) => '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
 
   static pw.BoxDecoration box() => pw.BoxDecoration(
-        color: PdfColor.fromHex('#FBFDFF'),
-        borderRadius: pw.BorderRadius.circular(8),
-        border: pw.Border.all(color: PdfColor.fromHex('#DDEAF5')),
+        color: PdfColors.white,
+        borderRadius: pw.BorderRadius.circular(10),
+        border: pw.Border.all(color: _pdfLine),
       );
 
   static pw.Widget infoRow(String a, String av, String b, String bv, pw.Font bold) => pw.Row(children: [
-        pw.Expanded(child: pw.Text('$a: $av', style: pw.TextStyle(font: bold))),
-        pw.Expanded(child: pw.Text('$b: $bv', style: pw.TextStyle(font: bold))),
+        pw.Expanded(child: pw.Text('$a: $av', style: pw.TextStyle(font: bold, fontSize: 10.5, color: _pdfText))),
+        pw.Expanded(child: pw.Text('$b: $bv', style: pw.TextStyle(font: bold, fontSize: 10.5, color: _pdfText))),
       ]);
 
   static pw.Widget signatureBox(String title) => pw.Column(children: [
-        pw.Container(width: 120, height: 1, color: PdfColors.grey500),
+        pw.Container(width: 120, height: 1, color: _pdfLine),
         pw.SizedBox(height: 4),
-        pw.Text(title),
+        pw.Text(title, style: pw.TextStyle(color: _pdfSoft, fontSize: 9)),
       ]);
 
+  static pw.Widget styledTable({required List<String> headers, required List<List<String>> rows, required pw.Font bold}) {
+    return pw.TableHelper.fromTextArray(
+      headers: headers,
+      data: rows,
+      headerStyle: pw.TextStyle(font: bold, color: PdfColors.white, fontSize: 10),
+      headerDecoration: pw.BoxDecoration(color: _pdfPrimaryDark, borderRadius: pw.BorderRadius.circular(4)),
+      cellStyle: pw.TextStyle(fontSize: 9, color: _pdfText),
+      cellAlignment: pw.Alignment.centerRight,
+      oddRowDecoration: pw.BoxDecoration(color: _pdfZebra),
+      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+    );
+  }
+
+  static pw.Widget totalsBar(String title, double debit, double credit, pw.Font bold) => pw.Container(
+        width: double.infinity,
+        padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: pw.BoxDecoration(color: _pdfGoldLight, borderRadius: pw.BorderRadius.circular(8)),
+        child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+          pw.Text(title, style: pw.TextStyle(font: bold, fontSize: 10.5, color: _pdfPrimaryDark)),
+          pw.Row(children: [
+            pw.Text('مدين ', style: pw.TextStyle(font: bold, fontSize: 10, color: _pdfSoft)),
+            pw.Text(money(debit), style: pw.TextStyle(font: bold, fontSize: 11, color: _pdfDebit)),
+            pw.SizedBox(width: 14),
+            pw.Text('دائن ', style: pw.TextStyle(font: bold, fontSize: 10, color: _pdfSoft)),
+            pw.Text(money(credit), style: pw.TextStyle(font: bold, fontSize: 11, color: _pdfCredit)),
+          ]),
+        ]),
+      );
+
+  // ===================== Excel =====================
   static Future<void> shareExcel() async {
     final excel = Excel.createExcel();
 

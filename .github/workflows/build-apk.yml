@@ -44,7 +44,7 @@ jobs:
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET" />
               <application
-                  android:label="المحاسب الاحترافي V2"
+                  android:label="المحاسب الذكي"
                   android:name="${applicationName}"
                   android:icon="@mipmap/ic_launcher">
                   <activity
@@ -80,5 +80,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: accounting-pro-desktop-v2-apk
+          name: accounting-pro-smart-mobile-v3-apk
           path: build/app/outputs/flutter-apk/app-release.apk

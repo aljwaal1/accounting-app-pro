@@ -19,6 +19,18 @@ jobs:
           cat .native_src/main.part00 .native_src/main.part01 .native_src/main.part02 .native_src/main.part03 .native_src/main.part04 .native_src/main.part05 .native_src/main.part06 .native_src/main.part07 .native_src/main.part08 .native_src/main.part09 > lib/main.dart
           test "$(wc -c < lib/main.dart)" -eq 71793
           echo "b135e9bafdd740075a2def935a47e40a2ff3562647d645d455d4201a258d3ad7  lib/main.dart" | sha256sum -c -
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/main.dart')
+          s = p.read_text(encoding='utf-8')
+          old = "Text('متاح ${money(p.stock)}',style:const TextStyle(fontSize:10,color:Colors.grey))])))).toList()),"
+          new = "Text('متاح ${money(p.stock)}',style:const TextStyle(fontSize:10,color:Colors.grey))]))))).toList()),"
+          if old not in s:
+              raise SystemExit('POS source patch target not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          test "$(wc -c < lib/main.dart)" -eq 71794
+          echo "4fae2644ffb32be755c3c3de2e08ccb402aadc5374b8b9d5abb6bff1f5488d1e  lib/main.dart" | sha256sum -c -
           if grep -q "package:webview_flutter" lib/main.dart; then
             echo "WebView dependency detected - native build rejected"
             exit 1

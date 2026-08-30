@@ -1,0 +1,121 @@
+
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:excel/excel.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const HesabatiApp());
+}
+
+String money(num v) {
+  final neg = v < 0;
+  final s = v.abs().toStringAsFixed(v.abs() % 1 == 0 ? 0 : 2);
+  final parts = s.split('.');
+  final chars = parts[0].split('').reversed.toList();
+  final out = <String>[];
+  for (var i = 0; i < chars.length; i++) {
+    if (i > 0 && i % 3 == 0) out.add(',');
+    out.add(chars[i]);
+  }
+  final whole = out.reversed.join();
+  return '${neg ? '-' : ''}$whole${parts.length > 1 ? '.${parts[1]}' : ''}';
+}
+
+String dateText(DateTime d) =>
+    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+double dval(String s) => double.tryParse(s.replaceAll(',', '').trim()) ?? 0;
+
+class Contact {
+  String id, name, type, phone, note;
+  double balance;
+  Contact({required this.id, required this.name, required this.type, this.phone='', this.note='', this.balance=0});
+  Map<String,dynamic> toJson()=>{'id':id,'name':name,'type':type,'phone':phone,'note':note,'balance':balance};
+  factory Contact.fromJson(Map<String,dynamic> j)=>Contact(id:j['id'],name:j['name'],type:j['type'],phone:j['phone']??'',note:j['note']??'',balance:(j['balance']??0).toDouble());
+}
+
+class Product {
+  String id, name, sku, category;
+  double stock, cost, price, minStock;
+  Product({required this.id, required this.name, required this.sku, this.category='عام', this.stock=0, this.cost=0, this.price=0, this.minStock=0});
+  Map<String,dynamic> toJson()=>{'id':id,'name':name,'sku':sku,'category':category,'stock':stock,'cost':cost,'price':price,'minStock':minStock};
+  factory Product.fromJson(Map<String,dynamic> j)=>Product(id:j['id'],name:j['name'],sku:j['sku'],category:j['category']??'عام',stock:(j['stock']??0).toDouble(),cost:(j['cost']??0).toDouble(),price:(j['price']??0).toDouble(),minStock:(j['minStock']??0).toDouble());
+}
+
+class DocLine {
+  String productId, name;
+  double qty, price, cost;
+  DocLine({required this.productId,required this.name,required this.qty,required this.price,required this.cost});
+  double get total=>qty*price;
+  Map<String,dynamic> toJson()=>{'productId':productId,'name':name,'qty':qty,'price':price,'cost':cost};
+  factory DocLine.fromJson(Map<String,dynamic> j)=>DocLine(productId:j['productId'],name:j['name'],qty:(j['qty']??0).toDouble(),price:(j['price']??0).toDouble(),cost:(j['cost']??0).toDouble());
+}
+
+class SaleDoc {
+  String id, customerId, customerName, accountId, status;
+  DateTime date;
+  List<DocLine> lines;
+  double discount, feeRate, total, paid;
+  SaleDoc({required this.id,required this.customerId,required this.customerName,required this.accountId,required this.date,required this.lines,this.discount=0,this.feeRate=0,required this.total,required this.paid,required this.status});
+  double get due=>total-paid;
+  Map<String,dynamic> toJson()=>{'id':id,'customerId':customerId,'customerName':customerName,'accountId':accountId,'date':date.toIso8601String(),'lines':lines.map((e)=>e.toJson()).toList(),'discount':discount,'feeRate':feeRate,'total':total,'paid':paid,'status':status};
+  factory SaleDoc.fromJson(Map<String,dynamic> j)=>SaleDoc(id:j['id'],customerId:j['customerId']??'',customerName:j['customerName']??'',accountId:j['accountId']??'',date:DateTime.parse(j['date']),lines:(j['lines'] as List).map((e)=>DocLine.fromJson(Map<String,dynamic>.from(e))).toList(),discount:(j['discount']??0).toDouble(),feeRate:(j['feeRate']??0).toDouble(),total:(j['total']??0).toDouble(),paid:(j['paid']??0).toDouble(),status:j['status']??'غير مدفوعة');
+}
+
+class PurchaseDoc {
+  String id, supplierId, supplierName, accountId, status;
+  DateTime date;
+  List<DocLine> lines;
+  double total, paid;
+  PurchaseDoc({required this.id,required this.supplierId,required this.supplierName,required this.accountId,required this.date,required this.lines,required this.total,required this.paid,required this.status});
+  double get due=>total-paid;
+  Map<String,dynamic> toJson()=>{'id':id,'supplierId':supplierId,'supplierName':supplierName,'accountId':accountId,'date':date.toIso8601String(),'lines':lines.map((e)=>e.toJson()).toList(),'total':total,'paid':paid,'status':status};
+  factory PurchaseDoc.fromJson(Map<String,dynamic> j)=>PurchaseDoc(id:j['id'],supplierId:j['supplierId']??'',supplierName:j['supplierName']??'',accountId:j['accountId']??'',date:DateTime.parse(j['date']),lines:(j['lines'] as List).map((e)=>DocLine.fromJson(Map<String,dynamic>.from(e))).toList(),total:(j['total']??0).toDouble(),paid:(j['paid']??0).toDouble(),status:j['status']??'غير مدفوعة');
+}
+
+class CashAccount {
+  String id, name, type;
+  double balance;
+  CashAccount({required this.id,required this.name,required this.type,this.balance=0});
+  Map<String,dynamic> toJson()=>{'id':id,'name':name,'type':type,'balance':balance};
+  factory CashAccount.fromJson(Map<String,dynamic> j)=>CashAccount(id:j['id'],name:j['name'],type:j['type']??'خزينة',balance:(j['balance']??0).toDouble());
+}
+
+class Expense {
+  String id, category, note, accountId;
+  DateTime date;
+  double amount;
+  Expense({required this.id,required this.category,required this.note,required this.accountId,required this.date,required this.amount});
+  Map<String,dynamic> toJson()=>{'id':id,'category':category,'note':note,'accountId':accountId,'date':date.toIso8601String(),'amount':amount};
+  factory Expense.fromJson(Map<String,dynamic> j)=>Expense(id:j['id'],category:j['category'],note:j['note']??'',accountId:j['accountId'],date:DateTime.parse(j['date']),amount:(j['amount']??0).toDouble());
+}
+
+class JournalLine {
+  String account;
+  double debit, credit;
+  JournalLine(this.account,{this.debit=0,this.credit=0});
+  Map<String,dynamic> toJson()=>{'account':account,'debit':debit,'credit':credit};
+  factory JournalLine.fromJson(Map<String,dynamic> j)=>JournalLine(j['account'],debit:(j['debit']??0).toDouble(),credit:(j['credit']??0).toDouble());
+}
+
+class JournalEntry {
+  String id, ref, note;
+  DateTime date;
+  List<JournalLine> lines;
+  JournalEntry({required this.id,required this.ref,required this.note,required this.date,required this.lines});
+  Map<String,dynamic> toJson()=>{'id':id,'ref':ref,'note':note,'date':date.toIso8601String(),'lines':lines.map((e)=>e.toJson()).toList()};
+  factory JournalEntry.fromJson(Map<String,dynamic> j)=>JournalEntry(id:j['id'],ref:j['ref'],note:j['note']??'',date:DateTime.parse(j['date']),lines:(j['lines'] as List).map((e)=>JournalLine.fromJson(Map<String,dynamic>.from(e))).toList());
+}
+
+class HesabatiStore extends ChangeNotifier {
+  static const key='hesabati_native_store_v1';
+  String companyName='

@@ -1,0 +1,48 @@
+Button.icon(onPressed:()=>productDialog(context,store),icon:const Icon(Icons.add),label:const Text('منتج جديد'))),const SizedBox(width:8),IconButton.filledTonal(onPressed:()=>store.exportPdfReport('المخزون'),icon:const Icon(Icons.picture_as_pdf))]),
+    const SizedBox(height:12),...store.products.map((p)=>Card(child:ListTile(
+      leading:CircleAvatar(backgroundColor:p.stock<=p.minStock?Colors.red.shade50:Colors.blue.shade50,child:Icon(Icons.inventory_2,color:p.stock<=p.minStock?Colors.red:Colors.blue)),
+      title:Text(p.name),subtitle:Text('${p.sku} • ${p.category}\nتكلفة ${money(p.cost)} • بيع ${money(p.price)}'),
+      trailing:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.end,children:[Text(money(p.stock),style:const TextStyle(fontWeight:FontWeight.bold,fontSize:17)),Text('${money(p.stock*p.cost)} ${store.currency}',style:const TextStyle(fontSize:10))]),
+      onTap:()=>stockAdjustDialog(context,store,p)
+    )))
+  ]);
+}
+void productDialog(BuildContext context,HesabatiStore store){
+  final name=TextEditingController(),sku=TextEditingController(),cat=TextEditingController(text:'عام'),stock=TextEditingController(text:'0'),cost=TextEditingController(text:'0'),price=TextEditingController(text:'0'),min=TextEditingController(text:'0');
+  showDialog(context:context,builder:(ctx)=>AlertDialog(title:const Text('إضافة منتج'),content:SizedBox(width:450,child:SingleChildScrollView(child:Column(children:[
+    TextField(controller:name,decoration:const InputDecoration(labelText:'اسم المنتج')),const SizedBox(height:8),TextField(controller:sku,decoration:const InputDecoration(labelText:'SKU / باركود')),const SizedBox(height:8),TextField(controller:cat,decoration:const InputDecoration(labelText:'الفئة')),
+    const SizedBox(height:8),Row(children:[Expanded(child:TextField(controller:stock,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'رصيد افتتاحي'))),const SizedBox(width:8),Expanded(child:TextField(controller:min,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'حد إعادة الطلب')))]),
+    const SizedBox(height:8),Row(children:[Expanded(child:TextField(controller:cost,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'التكلفة'))),const SizedBox(width:8),Expanded(child:TextField(controller:price,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'سعر البيع')))])
+  ]))),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(name.text.trim().isEmpty)return;store.addProduct(name.text.trim(),sku.text.trim(),cat.text.trim(),dval(stock.text),dval(cost.text),dval(price.text),dval(min.text));Navigator.pop(ctx);},child:const Text('حفظ'))]));
+}
+void stockAdjustDialog(BuildContext context,HesabatiStore store,Product p){
+  final c=TextEditingController(text:money(p.stock));
+  showDialog(context:context,builder:(ctx)=>AlertDialog(title:Text('تسوية مخزون • ${p.name}'),content:TextField(controller:c,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الكمية الفعلية')),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){store.adjustStock(p,dval(c.text));Navigator.pop(ctx);},child:const Text('اعتماد التسوية'))]));
+}
+
+class PosScreen extends StatefulWidget{final HesabatiStore store;const PosScreen({super.key,required this.store});@override State<PosScreen> createState()=>_PosScreenState();}
+class _PosScreenState extends State<PosScreen>{
+  final Map<String,double> cart={};String customerId='',accountId='';
+  @override void initState(){super.initState();final c=widget.store.contacts.where((e)=>e.type=='عميل').toList();customerId=c.isNotEmpty?c.first.id:'';accountId=widget.store.cashAccounts.first.id;}
+  @override Widget build(BuildContext context){
+    final lines=cart.entries.map((e){final p=widget.store.product(e.key)!;return DocLine(productId:p.id,name:p.name,qty:e.value,price:p.price,cost:p.cost);}).toList();final total=lines.fold<double>(0,(s,l)=>s+l.total);
+    return ListView(padding:const EdgeInsets.all(14),children:[
+      Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(children:[
+        DropdownButtonFormField(value:customerId.isEmpty?null:customerId,decoration:const InputDecoration(labelText:'العميل'),items:widget.store.contacts.where((e)=>e.type=='عميل').map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>setState(()=>customerId=v??'')),
+        const SizedBox(height:8),DropdownButtonFormField(value:accountId,decoration:const InputDecoration(labelText:'طريقة التحصيل'),items:widget.store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>setState(()=>accountId=v??accountId))
+      ]))),
+      const SizedBox(height:12),
+      GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,crossAxisSpacing:8,mainAxisSpacing:8,childAspectRatio:1.2,children:widget.store.products.map((p)=>InkWell(onTap:p.stock<=0?null:()=>setState(()=>cart[p.id]=(cart[p.id]??0)+1),child:Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text(p.name,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.bold)),Text('${money(p.price)} ${widget.store.currency}',style:const TextStyle(color:Colors.blue,fontWeight:FontWeight.bold)),Text('متاح ${money(p.stock)}',style:const TextStyle(fontSize:10,color:Colors.grey))])))).toList()),
+      const SizedBox(height:12),
+      Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('السلة',style:TextStyle(fontWeight:FontWeight.bold,fontSize:17)),
+        ...lines.map((l)=>ListTile(contentPadding:EdgeInsets.zero,title:Text(l.name),subtitle:Text('الكمية ${money(l.qty)}'),trailing:Row(mainAxisSize:MainAxisSize.min,children:[Text(money(l.total)),IconButton(onPressed:()=>setState((){final q=(cart[l.productId]??1)-1;if(q<=0)cart.remove(l.productId);else cart[l.productId]=q;}),icon:const Icon(Icons.remove_circle_outline))]))),
+        const Divider(),MetricRow('الإجمالي',total,widget.store.currency,Colors.blue),
+        const SizedBox(height:8),FilledButton.icon(style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(48)),onPressed:lines.isEmpty?null:(){final ok=widget.store.addSale(customerId:customerId,lines:lines,discount:0,feeRate:widget.store.feeRate,paid:total+(total*widget.store.feeRate/100),accountId:accountId);if(ok){setState(()=>cart.clear());ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تمت عملية البيع بنجاح')));}},icon:const Icon(Icons.payments),label:const Text('إتمام الدفع'))
+      ])))
+    ]);
+  }
+}
+
+class AccountingScreen extends StatelessWidget{
+  final HesabatiStore store;const AccountingScreen({super.ke

@@ -1,0 +1,112 @@
+':'جزئي'; a.balance-=amount;
+    final s=contact(pur.supplierId); if(s!=null)s.balance=(s.balance-amount).clamp(0,double.infinity).toDouble();
+    addJournal(pur.id,'سداد مورد',[JournalLine('الموردون',debit:amount),JournalLine(a.name,credit:amount)],silent:true);
+    save(); return true;
+  }
+
+  bool addExpense(String category,String note,double amount,String accountId){
+    final a=cash(accountId); if(a==null || amount<=0 || a.balance<amount)return false;
+    a.balance-=amount;
+    final id=next('EXP');
+    expenses.insert(0,Expense(id:id,category:category,note:note,accountId:accountId,date:DateTime.now(),amount:amount));
+    addJournal(id,'مصروف $category',[JournalLine('مصروف $category',debit:amount),JournalLine(a.name,credit:amount)],silent:true);
+    save(); return true;
+  }
+
+  bool transfer(String fromId,String toId,double amount){
+    final f=cash(fromId),t=cash(toId); if(f==null||t==null||f.id==t.id||amount<=0||f.balance<amount)return false;
+    f.balance-=amount;t.balance+=amount;
+    addJournal(next('TR'),'تحويل داخلي',[JournalLine(t.name,debit:amount),JournalLine(f.name,credit:amount)],silent:true);
+    save(); return true;
+  }
+
+  void addCashAccount(String name,String type,double opening){
+    final a=CashAccount(id:next('A'),name:name,type:type,balance:opening);cashAccounts.add(a);
+    if(opening>0)addJournal('OPEN','رصيد افتتاحي $name',[JournalLine(name,debit:opening),JournalLine('حقوق الملكية',credit:opening)],silent:true);
+    save();
+  }
+
+  void adjustStock(Product p,double newStock){
+    final diff=newStock-p.stock;if(diff==0)return;
+    final value=diff.abs()*p.cost;p.stock=newStock;
+    if(diff>0)addJournal(next('ADJ'),'زيادة جرد ${p.name}',[JournalLine('المخزون',debit:value),JournalLine('فروقات الجرد',credit:value)],silent:true);
+    else addJournal(next('ADJ'),'نقص جرد ${p.name}',[JournalLine('فروقات الجرد',debit:value),JournalLine('المخزون',credit:value)],silent:true);
+    save();
+  }
+
+  void addJournal(String ref,String note,List<JournalLine> lines,{bool silent=false}){
+    journals.insert(0,JournalEntry(id:next('J'),ref:ref,note:note,date:DateTime.now(),lines:lines));
+    if(!silent)save();
+  }
+
+  Future<void> save() async {
+    final p=await SharedPreferences.getInstance();
+    await p.setString(key,jsonEncode(toJson()));
+    notifyListeners();
+  }
+
+  Map<String,dynamic> toJson()=>{
+    'companyName':companyName,'currency':currency,'fiscalYear':fiscalYear,'feeRate':feeRate,'branch':branch,'seq':_seq,
+    'contacts':contacts.map((e)=>e.toJson()).toList(),'products':products.map((e)=>e.toJson()).toList(),'sales':sales.map((e)=>e.toJson()).toList(),
+    'purchases':purchases.map((e)=>e.toJson()).toList(),'cashAccounts':cashAccounts.map((e)=>e.toJson()).toList(),'expenses':expenses.map((e)=>e.toJson()).toList(),'journals':journals.map((e)=>e.toJson()).toList(),
+  };
+
+  void _fromJson(Map<String,dynamic> j){
+    companyName=j['companyName']??companyName;currency=j['currency']??currency;fiscalYear=j['fiscalYear']??fiscalYear;feeRate=(j['feeRate']??0).toDouble();branch=j['branch']??branch;_seq=j['seq']??_seq;
+    contacts=((j['contacts']??[]) as List).map((e)=>Contact.fromJson(Map<String,dynamic>.from(e))).toList();
+    products=((j['products']??[]) as List).map((e)=>Product.fromJson(Map<String,dynamic>.from(e))).toList();
+    sales=((j['sales']??[]) as List).map((e)=>SaleDoc.fromJson(Map<String,dynamic>.from(e))).toList();
+    purchases=((j['purchases']??[]) as List).map((e)=>PurchaseDoc.fromJson(Map<String,dynamic>.from(e))).toList();
+    cashAccounts=((j['cashAccounts']??[]) as List).map((e)=>CashAccount.fromJson(Map<String,dynamic>.from(e))).toList();
+    expenses=((j['expenses']??[]) as List).map((e)=>Expense.fromJson(Map<String,dynamic>.from(e))).toList();
+    journals=((j['journals']??[]) as List).map((e)=>JournalEntry.fromJson(Map<String,dynamic>.from(e))).toList();
+  }
+
+  Future<void> exportBackup() async{
+    final dir=await getTemporaryDirectory();
+    final file=File('${dir.path}/hesabati_backup_${dateText(DateTime.now())}.json');
+    await file.writeAsString(jsonEncode(toJson()));
+    await Share.shareXFiles([XFile(file.path)],text:'نسخة احتياطية - حساباتي');
+  }
+
+  Future<void> exportExcel() async{
+    final ex=Excel.createExcel();
+    final s=ex['المبيعات'];
+    s.appendRow(['رقم','التاريخ','العميل','الإجمالي','المدفوع','المتبقي','الحالة']);
+    for(final x in sales)s.appendRow([x.id,dateText(x.date),x.customerName,money(x.total),money(x.paid),money(x.due),x.status]);
+    final p=ex['المشتريات'];
+    p.appendRow(['رقم','التاريخ','المورد','الإجمالي','المدفوع','المتبقي','الحالة']);
+    for(final x in purchases)p.appendRow([x.id,dateText(x.date),x.supplierName,money(x.total),money(x.paid),money(x.due),x.status]);
+    final inv=ex['المخزون'];
+    inv.appendRow(['SKU','المنتج','الفئة','الكمية','متوسط التكلفة','سعر البيع','قيمة المخزون']);
+    for(final x in products)inv.appendRow([x.sku,x.name,x.category,money(x.stock),money(x.cost),money(x.price),money(x.stock*x.cost)]);
+    final c=ex['العملاء والموردون'];
+    c.appendRow(['النوع','الاسم','الهاتف','الرصيد']);
+    for(final x in contacts)c.appendRow([x.type,x.name,x.phone,money(x.balance)]);
+    final e=ex['المصروفات'];
+    e.appendRow(['التاريخ','التصنيف','البيان','المبلغ']);
+    for(final x in expenses)e.appendRow([dateText(x.date),x.category,x.note,money(x.amount)]);
+    final j=ex['اليومية'];
+    j.appendRow(['التاريخ','المرجع','البيان','الحساب','مدين','دائن']);
+    for(final x in journals){for(final l in x.lines)j.appendRow([dateText(x.date),x.ref,x.note,l.account,money(l.debit),money(l.credit)]);}
+    final sum=ex['الملخص'];
+    sum.appendRow(['المؤشر','القيمة']);
+    sum.appendRow(['المبيعات',money(salesTotal)]);sum.appendRow(['المشتريات',money(purchasesTotal)]);sum.appendRow(['المصروفات',money(expenseTotal)]);
+    sum.appendRow(['صافي الربح',money(netProfit)]);sum.appendRow(['النقدية والبنوك',money(cashTotal)]);sum.appendRow(['قيمة المخزون',money(inventoryValue)]);
+    final bytes=ex.encode();if(bytes==null)return;
+    final dir=await getTemporaryDirectory();final file=File('${dir.path}/hesabati_reports_${dateText(DateTime.now())}.xlsx');
+    await file.writeAsBytes(Uint8List.fromList(bytes));
+    await Share.shareXFiles([XFile(file.path)],text:'تقارير حساباتي Excel - اختر تطبيق الملفات لحفظه في المكان المطلوب');
+  }
+
+  Future<void> exportPdfReport(String kind) async{
+    final doc=pw.Document();
+    final font=await PdfGoogleFonts.cairoRegular();
+    final bold=await PdfGoogleFonts.cairoBold();
+    List<String> headers=[];List<List<String>> rows=[];String title=kind;
+    if(kind=='المبيعات'){
+      headers=['رقم','التاريخ','العميل','الإجمالي','المدفوع','المتبقي'];
+      rows=sales.map((x)=>[x.id,dateText(x.date),x.customerName,money(x.total),money(x.paid),money(x.due)]).toList();
+    }else if(kind=='المشتريات'){
+      headers=['رقم','التاريخ','المورد','الإجمالي','المدفوع','المتبقي'];
+      rows=purchases.map((x)=>[x.id,dateText(x.date),x.supplierName,money(x.total),money(x.paid),mo

@@ -1,0 +1,138 @@
+شركة الأمل للتجارة';
+  String currency='ر.س';
+  String fiscalYear='2026';
+  double feeRate=0;
+  String branch='الفرع الرئيسي';
+
+  List<Contact> contacts=[];
+  List<Product> products=[];
+  List<SaleDoc> sales=[];
+  List<PurchaseDoc> purchases=[];
+  List<CashAccount> cashAccounts=[];
+  List<Expense> expenses=[];
+  List<JournalEntry> journals=[];
+
+  bool ready=false;
+  int _seq=1000;
+
+  Future<void> init() async {
+    final p=await SharedPreferences.getInstance();
+    final raw=p.getString(key);
+    if(raw!=null){
+      try{ _fromJson(jsonDecode(raw)); }catch(_){}
+    }
+    if(contacts.isEmpty && products.isEmpty && cashAccounts.isEmpty) seed();
+    ready=true;
+    notifyListeners();
+  }
+
+  void seed(){
+    contacts=[
+      Contact(id:'C1',name:'شركة النور',type:'عميل',phone:'0500000001'),
+      Contact(id:'C2',name:'أحمد علي',type:'عميل',phone:'0500000002'),
+      Contact(id:'S1',name:'المورد المتحد',type:'مورد',phone:'0500000010'),
+    ];
+    products=[
+      Product(id:'P1',name:'لابتوب HP 15',sku:'HP15',category:'إلكترونيات',stock:25,cost:1850,price:2200,minStock:5),
+      Product(id:'P2',name:'طابعة Canon',sku:'CAN650',category:'مكتبي',stock:18,cost:540,price:650,minStock:4),
+      Product(id:'P3',name:'حبر أسود',sku:'INK-B',category:'مستلزمات',stock:12,cost:42,price:50,minStock:5),
+      Product(id:'P4',name:'ماوس لاسلكي',sku:'M-W',category:'إكسسوارات',stock:30,cost:30,price:50,minStock:6),
+    ];
+    cashAccounts=[
+      CashAccount(id:'A1',name:'الخزينة الرئيسية',type:'خزينة',balance:24610),
+      CashAccount(id:'A2',name:'البنك الرئيسي',type:'بنك',balance:83760),
+    ];
+  }
+
+  String next(String p)=>'$p-${DateTime.now().year}-${++_seq}';
+
+  double get salesTotal=>sales.fold(0,(s,e)=>s+e.total);
+  double get purchasesTotal=>purchases.fold(0,(s,e)=>s+e.total);
+  double get expenseTotal=>expenses.fold(0,(s,e)=>s+e.amount);
+  double get cashTotal=>cashAccounts.fold(0,(s,e)=>s+e.balance);
+  double get receivables=>contacts.where((e)=>e.type=='عميل').fold(0,(s,e)=>s+(e.balance>0?e.balance:0));
+  double get payables=>contacts.where((e)=>e.type=='مورد').fold(0,(s,e)=>s+(e.balance>0?e.balance:0));
+  double get inventoryValue=>products.fold(0,(s,e)=>s+e.stock*e.cost);
+  double get cogs=>sales.fold(0,(s,e)=>s+e.lines.fold(0,(x,l)=>x+l.qty*l.cost));
+  double get grossProfit=>salesTotal-cogs;
+  double get netProfit=>grossProfit-expenseTotal;
+
+  Contact? contact(String id){for(final x in contacts){if(x.id==id)return x;}return null;}
+  Product? product(String id){for(final x in products){if(x.id==id)return x;}return null;}
+  CashAccount? cash(String id){for(final x in cashAccounts){if(x.id==id)return x;}return null;}
+
+  void addContact(String name,String type,String phone,String note){
+    contacts.add(Contact(id:next(type=='عميل'?'C':'S'),name:name,type:type,phone:phone,note:note));
+    save();
+  }
+  void addProduct(String name,String sku,String category,double stock,double cost,double price,double minStock){
+    products.add(Product(id:next('P'),name:name,sku:sku,category:category,stock:stock,cost:cost,price:price,minStock:minStock));
+    if(stock>0 && cost>0){
+      addJournal('OPEN','رصيد افتتاحي للمخزون',[JournalLine('المخزون',debit:stock*cost),JournalLine('حقوق الملكية',credit:stock*cost)],silent:true);
+    }
+    save();
+  }
+
+  bool addSale({required String customerId,required List<DocLine> lines,required double discount,required double feeRate,required double paid,required String accountId}){
+    if(lines.isEmpty)return false;
+    for(final l in lines){final p=product(l.productId);if(p==null || p.stock<l.qty)return false;}
+    final subtotal=lines.fold<double>(0,(s,l)=>s+l.total);
+    final base=(subtotal-discount).clamp(0,double.infinity).toDouble();
+    final total=base+(base*feeRate/100);
+    final actualPaid=paid.clamp(0,total).toDouble();
+    final customer=contact(customerId);
+    final account=cash(accountId);
+    if(actualPaid>0 && account==null)return false;
+    for(final l in lines){product(l.productId)!.stock-=l.qty;}
+    if(customer!=null) customer.balance += total-actualPaid;
+    if(account!=null) account.balance += actualPaid;
+    final id=next('INV');
+    sales.insert(0,SaleDoc(id:id,customerId:customerId,customerName:customer?.name??'نقدي',accountId:accountId,date:DateTime.now(),lines:lines,discount:discount,feeRate:feeRate,total:total,paid:actualPaid,status:actualPaid>=total?'مدفوعة':actualPaid>0?'جزئي':'غير مدفوعة'));
+    final due=total-actualPaid;
+    final cost=lines.fold<double>(0,(s,l)=>s+l.qty*l.cost);
+    final j=<JournalLine>[];
+    if(actualPaid>0)j.add(JournalLine(account?.name??'النقدية',debit:actualPaid));
+    if(due>0)j.add(JournalLine('العملاء',debit:due));
+    j.add(JournalLine('إيرادات المبيعات',credit:total));
+    if(cost>0){j.add(JournalLine('تكلفة البضاعة المباعة',debit:cost));j.add(JournalLine('المخزون',credit:cost));}
+    addJournal(id,'فاتورة مبيعات',j,silent:true);
+    save(); return true;
+  }
+
+  bool receiveSale(SaleDoc sale,double amount,String accountId){
+    final a=cash(accountId); if(a==null || amount<=0 || amount>sale.due+0.001)return false;
+    sale.paid+=amount; sale.status=sale.due<=0.001?'مدفوعة':'جزئي'; a.balance+=amount;
+    final c=contact(sale.customerId); if(c!=null)c.balance=(c.balance-amount).clamp(0,double.infinity).toDouble();
+    addJournal(sale.id,'تحصيل من عميل',[JournalLine(a.name,debit:amount),JournalLine('العملاء',credit:amount)],silent:true);
+    save(); return true;
+  }
+
+  bool addPurchase({required String supplierId,required List<DocLine> lines,required double paid,required String accountId}){
+    if(lines.isEmpty)return false;
+    final total=lines.fold<double>(0,(s,l)=>s+l.total);
+    final actualPaid=paid.clamp(0,total).toDouble();
+    final a=cash(accountId);
+    if(actualPaid>0 && (a==null || a.balance<actualPaid))return false;
+    for(final l in lines){
+      final p=product(l.productId); if(p==null)continue;
+      final oldValue=p.stock*p.cost;
+      final addValue=l.qty*l.price;
+      p.stock+=l.qty;
+      if(p.stock>0)p.cost=(oldValue+addValue)/p.stock;
+    }
+    final supplier=contact(supplierId);
+    if(supplier!=null)supplier.balance+=total-actualPaid;
+    if(a!=null)a.balance-=actualPaid;
+    final id=next('PUR');
+    purchases.insert(0,PurchaseDoc(id:id,supplierId:supplierId,supplierName:supplier?.name??'',accountId:accountId,date:DateTime.now(),lines:lines,total:total,paid:actualPaid,status:actualPaid>=total?'مدفوعة':actualPaid>0?'جزئي':'غير مدفوعة'));
+    final due=total-actualPaid;
+    final j=<JournalLine>[JournalLine('المخزون',debit:total)];
+    if(actualPaid>0)j.add(JournalLine(a?.name??'النقدية',credit:actualPaid));
+    if(due>0)j.add(JournalLine('الموردون',credit:due));
+    addJournal(id,'فاتورة مشتريات',j,silent:true);
+    save(); return true;
+  }
+
+  bool payPurchase(PurchaseDoc pur,double amount,String accountId){
+    final a=cash(accountId); if(a==null || amount<=0 || amount>pur.due+0.001 || a.balance<amount)return false;
+    pur.paid+=amount; pur.status=pur.due<=0.001?'مدفوعة

@@ -1,4 +1,12 @@
-          const Padding(padding:EdgeInsets.all(12),child:Text('الأرقام: 1,234.56 • نظام محايد بين الدول',style:TextStyle(fontSize:10,color:Colors.grey)))
+ing:const EdgeInsets.all(20),
+              decoration:const BoxDecoration(gradient:LinearGradient(colors:[Color(0xFF12224B),Color(0xFF23478F)])),
+              child:const Row(children:[CircleAvatar(radius:24,backgroundColor:Color(0xFF3B82F6),child:Text('ح',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.bold))),SizedBox(width:12),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('حساباتي',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w900)),Text('نظام إدارة الأعمال والمحاسبة',style:TextStyle(color:Color(0xFFD7E3FF),fontSize:11))])])
+            ),
+            Expanded(child:ListView(padding:const EdgeInsets.all(10),children:Section.values.map((e)=>ListTile(
+              leading:Icon(icons[e]),title:Text(labels[e]!),selected:section==e,selectedTileColor:const Color(0xFFEAF1FF),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12)),
+              onTap:(){Navigator.pop(context);setState(()=>section=e);}
+            )).toList())),
+            const Padding(padding:EdgeInsets.all(12),child:Text('الأرقام: 1,234.56 • نظام محايد بين الدول',style:TextStyle(fontSize:10,color:Colors.grey)))
           ]))
         ),
         body:body,

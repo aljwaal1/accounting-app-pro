@@ -1,0 +1,55 @@
+y,required this.store});
+  @override Widget build(BuildContext context){
+    double td=0,tc=0;for(final j in store.journals){for(final l in j.lines){td+=l.debit;tc+=l.credit;}}
+    return ListView(padding:const EdgeInsets.all(14),children:[
+      GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,crossAxisSpacing:8,mainAxisSpacing:8,childAspectRatio:1.5,children:[
+        Kpi('إجمالي المدين',td,Icons.arrow_downward,Colors.red,store.currency),Kpi('إجمالي الدائن',tc,Icons.arrow_upward,Colors.green,store.currency)
+      ]),
+      const SizedBox(height:12),
+      Row(children:[Expanded(child:FilledButton.icon(onPressed:()=>manualJournalDialog(context,store),icon:const Icon(Icons.add),label:const Text('قيد يومية يدوي'))),const SizedBox(width:8),IconButton.filledTonal(onPressed:()=>store.exportPdfReport('اليومية'),icon:const Icon(Icons.picture_as_pdf))]),
+      const SizedBox(height:12),
+      ...store.journals.map((j)=>Card(child:ExpansionTile(title:Text(j.note),subtitle:Text('${j.ref} • ${dateText(j.date)}'),children:j.lines.map((l)=>ListTile(dense:true,title:Text(l.account),trailing:Text('مدين ${money(l.debit)}   |   دائن ${money(l.credit)}'))).toList())))
+    ]);
+  }
+}
+void manualJournalDialog(BuildContext context,HesabatiStore store){
+  final note=TextEditingController(),debitAcc=TextEditingController(),creditAcc=TextEditingController(),amount=TextEditingController();
+  showDialog(context:context,builder:(ctx)=>AlertDialog(title:const Text('قيد يومية يدوي'),content:Column(mainAxisSize:MainAxisSize.min,children:[
+    TextField(controller:note,decoration:const InputDecoration(labelText:'البيان')),const SizedBox(height:8),TextField(controller:debitAcc,decoration:const InputDecoration(labelText:'الحساب المدين')),const SizedBox(height:8),TextField(controller:creditAcc,decoration:const InputDecoration(labelText:'الحساب الدائن')),const SizedBox(height:8),TextField(controller:amount,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ'))
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){final a=dval(amount.text);if(a<=0||debitAcc.text.trim().isEmpty||creditAcc.text.trim().isEmpty)return;store.addJournal(store.next('MAN'),note.text.trim(),[JournalLine(debitAcc.text.trim(),debit:a),JournalLine(creditAcc.text.trim(),credit:a)]);Navigator.pop(ctx);},child:const Text('حفظ القيد'))]));
+}
+
+class CashScreen extends StatelessWidget{
+  final HesabatiStore store;const CashScreen({super.key,required this.store});
+  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(14),children:[
+    Row(children:[Expanded(child:FilledButton.icon(onPressed:()=>cashAccountDialog(context,store),icon:const Icon(Icons.add),label:const Text('حساب نقدي / بنكي'))),const SizedBox(width:8),FilledButton.tonalIcon(onPressed:()=>transferDialog(context,store),icon:const Icon(Icons.swap_horiz),label:const Text('تحويل'))]),
+    const SizedBox(height:12),...store.cashAccounts.map((a)=>Card(child:ListTile(leading:CircleAvatar(child:Icon(a.type=='بنك'?Icons.account_balance:Icons.payments)),title:Text(a.name),subtitle:Text(a.type),trailing:Text('${money(a.balance)} ${store.currency}',style:const TextStyle(fontWeight:FontWeight.w900,fontSize:16)))))
+  ]);
+}
+void cashAccountDialog(BuildContext context,HesabatiStore store){
+  final n=TextEditingController(),o=TextEditingController(text:'0');String type='خزينة';
+  showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setState)=>AlertDialog(title:const Text('حساب جديد'),content:Column(mainAxisSize:MainAxisSize.min,children:[
+    SegmentedButton<String>(segments:const [ButtonSegment(value:'خزينة',label:Text('خزينة')),ButtonSegment(value:'بنك',label:Text('بنك'))],selected:{type},onSelectionChanged:(v)=>setState(()=>type=v.first)),const SizedBox(height:8),
+    TextField(controller:n,decoration:const InputDecoration(labelText:'اسم الحساب')),const SizedBox(height:8),TextField(controller:o,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الرصيد الافتتاحي'))
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(n.text.trim().isEmpty)return;store.addCashAccount(n.text.trim(),type,dval(o.text));Navigator.pop(ctx);},child:const Text('حفظ'))])));
+}
+void transferDialog(BuildContext context,HesabatiStore store){
+  if(store.cashAccounts.length<2)return;String f=store.cashAccounts[0].id,t=store.cashAccounts[1].id;final a=TextEditingController();
+  showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setState)=>AlertDialog(title:const Text('تحويل بين الحسابات'),content:Column(mainAxisSize:MainAxisSize.min,children:[
+    DropdownButtonFormField(value:f,decoration:const InputDecoration(labelText:'من'),items:store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text('${x.name} • ${money(x.balance)}'))).toList(),onChanged:(v)=>setState(()=>f=v??f)),const SizedBox(height:8),
+    DropdownButtonFormField(value:t,decoration:const InputDecoration(labelText:'إلى'),items:store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>setState(()=>t=v??t)),const SizedBox(height:8),TextField(controller:a,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ'))
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(store.transfer(f,t,dval(a.text)))Navigator.pop(ctx);},child:const Text('تحويل'))])));
+}
+
+class ExpensesScreen extends StatelessWidget{
+  final HesabatiStore store;const ExpensesScreen({super.key,required this.store});
+  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(14),children:[
+    Row(children:[Expanded(child:FilledButton.icon(onPressed:()=>expenseDialog(context,store),icon:const Icon(Icons.add),label:const Text('تسجيل مصروف'))),const SizedBox(width:8),IconButton.filledTonal(onPressed:()=>store.exportPdfReport('المصروفات'),icon:const Icon(Icons.picture_as_pdf))]),
+    const SizedBox(height:12),...store.expenses.map((e)=>Card(child:ListTile(leading:const CircleAvatar(child:Icon(Icons.payments)),title:Text(e.category),subtitle:Text('${dateText(e.date)} • ${e.note}'),trailing:Text('${money(e.amount)} ${store.currency}',style:const TextStyle(fontWeight:FontWeight.bold,color:Colors.red))))),
+    if(store.expenses.isEmpty)const EmptyBox('لا توجد مصروفات بعد')
+  ]);
+}
+void expenseDialog(BuildContext context,HesabatiStore store){
+  final cat=TextEditingController(),note=TextEditingController(),amount=TextEditingController();String aid=store.cashAccounts.first.id;
+  showDialog(context:context,builder:(ctx)=>AlertDialog(title:const Text('تسجيل مصروف'),content:Column(mainAxisSize:MainAxisSize.min,children:[
+    TextField(controller:cat,decoration:const InputDecoration(labelText:'التصنيف')),const SizedBox(height:8),TextField(controller:note,decoratio

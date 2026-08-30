@@ -1,0 +1,51 @@
+t:CrossAxisAlignment.end,children:[Text('${money(x.total)} ${store.currency}',style:const TextStyle(fontWeight:FontWeight.bold)),if(x.due>0)Text('متبقي ${money(x.due)}',style:const TextStyle(color:Colors.red,fontSize:11))]),onTap:x.due>0?()=>showPayDialog(context,store,x):null))),
+    if(store.purchases.isEmpty)const EmptyBox('لا توجد مشتريات بعد')
+  ]);
+}
+class PurchaseForm extends StatefulWidget{final HesabatiStore store;const PurchaseForm({super.key,required this.store});@override State<PurchaseForm> createState()=>_PurchaseFormState();}
+class _PurchaseFormState extends State<PurchaseForm>{
+  String supplierId='',accountId='';final lines=<DocLine>[];final paid=TextEditingController(text:'0');
+  @override void initState(){super.initState();final s=widget.store.contacts.where((e)=>e.type=='مورد').toList();supplierId=s.isNotEmpty?s.first.id:'';accountId=widget.store.cashAccounts.isNotEmpty?widget.store.cashAccounts.first.id:'';}
+  @override Widget build(BuildContext context){final total=lines.fold<double>(0,(s,l)=>s+l.total);final suppliers=widget.store.contacts.where((e)=>e.type=='مورد').toList();
+    return Directionality(textDirection:TextDirection.rtl,child:Scaffold(appBar:AppBar(title:const Text('فاتورة شراء جديدة')),body:ListView(padding:const EdgeInsets.all(14),children:[
+      DropdownButtonFormField(value:supplierId.isEmpty?null:supplierId,decoration:const InputDecoration(labelText:'المورد'),items:suppliers.map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>setState(()=>supplierId=v??'')),
+      const SizedBox(height:10),FilledButton.tonalIcon(onPressed:()=>addLineDialog(context,widget.store,lines,forPurchase:true,onDone:()=>setState((){})),icon:const Icon(Icons.add),label:const Text('إضافة صنف')),
+      const SizedBox(height:10),...lines.asMap().entries.map((e)=>Card(child:ListTile(title:Text(e.value.name),subtitle:Text('${money(e.value.qty)} × ${money(e.value.price)}'),trailing:Row(mainAxisSize:MainAxisSize.min,children:[Text(money(e.value.total),style:const TextStyle(fontWeight:FontWeight.bold)),IconButton(onPressed:()=>setState(()=>lines.removeAt(e.key)),icon:const Icon(Icons.close))])))),
+      const SizedBox(height:10),TextField(controller:paid,keyboardType:TextInputType.number,decoration:InputDecoration(labelText:'المدفوع الآن (${widget.store.currency})')),
+      const SizedBox(height:10),DropdownButtonFormField(value:accountId.isEmpty?null:accountId,decoration:const InputDecoration(labelText:'الخزينة / البنك'),items:widget.store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text('${x.name} • ${money(x.balance)}'))).toList(),onChanged:(v)=>accountId=v??''),
+      const SizedBox(height:14),Card(child:Padding(padding:const EdgeInsets.all(14),child:MetricRow('إجمالي المشتريات',total,widget.store.currency,Colors.blue))),
+      const SizedBox(height:14),FilledButton.icon(onPressed:lines.isEmpty?null:(){final ok=widget.store.addPurchase(supplierId:supplierId,lines:List.from(lines),paid:dval(paid.text),accountId:accountId);if(ok)Navigator.pop(context);else ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تعذر الحفظ. تحقق من رصيد الخزينة والبيانات.')));},icon:const Icon(Icons.save),label:const Text('حفظ فاتورة الشراء'))
+    ])));
+  }
+}
+void showPayDialog(BuildContext context,HesabatiStore store,PurchaseDoc pur){
+  final a=TextEditingController(text:money(pur.due));String aid=store.cashAccounts.first.id;
+  showDialog(context:context,builder:(ctx)=>AlertDialog(title:Text('سداد ${pur.id}'),content:Column(mainAxisSize:MainAxisSize.min,children:[
+    Text('المتبقي: ${money(pur.due)} ${store.currency}'),const SizedBox(height:10),TextField(controller:a,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ')),
+    const SizedBox(height:10),DropdownButtonFormField(value:aid,items:store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text('${x.name} • ${money(x.balance)}'))).toList(),onChanged:(v)=>aid=v??aid)
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(store.payPurchase(pur,dval(a.text),aid))Navigator.pop(ctx);},child:const Text('سداد'))]));
+}
+
+class ContactsScreen extends StatefulWidget{final HesabatiStore store;const ContactsScreen({super.key,required this.store});@override State<ContactsScreen> createState()=>_ContactsScreenState();}
+class _ContactsScreenState extends State<ContactsScreen>{
+  String filter='الكل';
+  @override Widget build(BuildContext context){final list=widget.store.contacts.where((e)=>filter=='الكل'||e.type==filter).toList();
+    return ListView(padding:const EdgeInsets.all(14),children:[
+      Row(children:[Expanded(child:SegmentedButton<String>(segments:const [ButtonSegment(value:'الكل',label:Text('الكل')),ButtonSegment(value:'عميل',label:Text('العملاء')),ButtonSegment(value:'مورد',label:Text('الموردون'))],selected:{filter},onSelectionChanged:(v)=>setState(()=>filter=v.first))),const SizedBox(width:8),IconButton.filled(onPressed:()=>contactDialog(context,widget.store),icon:const Icon(Icons.person_add))]),
+      const SizedBox(height:12),...list.map((x)=>Card(child:ListTile(leading:CircleAvatar(child:Icon(x.type=='عميل'?Icons.person:Icons.local_shipping)),title:Text(x.name),subtitle:Text('${x.type}${x.phone.isNotEmpty?' • ${x.phone}':''}'),trailing:Text('${money(x.balance)} ${widget.store.currency}',style:TextStyle(fontWeight:FontWeight.bold,color:x.balance>0?Colors.orange:Colors.green))))),
+      if(list.isEmpty)const EmptyBox('لا توجد بيانات')
+    ]);
+  }
+}
+void contactDialog(BuildContext context,HesabatiStore store){
+  final name=TextEditingController(),phone=TextEditingController(),note=TextEditingController();String type='عميل';
+  showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setState)=>AlertDialog(title:const Text('إضافة عميل / مورد'),content:Column(mainAxisSize:MainAxisSize.min,children:[
+    SegmentedButton<String>(segments:const [ButtonSegment(value:'عميل',label:Text('عميل')),ButtonSegment(value:'مورد',label:Text('مورد'))],selected:{type},onSelectionChanged:(v)=>setState(()=>type=v.first)),
+    const SizedBox(height:10),TextField(controller:name,decoration:const InputDecoration(labelText:'الاسم')),const SizedBox(height:10),TextField(controller:phone,decoration:const InputDecoration(labelText:'الهاتف')),const SizedBox(height:10),TextField(controller:note,decoration:const InputDecoration(labelText:'ملاحظات'))
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(name.text.trim().isEmpty)return;store.addContact(name.text.trim(),type,phone.text.trim(),note.text.trim());Navigator.pop(ctx);},child:const Text('حفظ'))])));
+}
+
+class InventoryScreen extends StatelessWidget{
+  final HesabatiStore store;const InventoryScreen({super.key,required this.store});
+  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(14),children:[
+    Row(children:[Expanded(child:Filled

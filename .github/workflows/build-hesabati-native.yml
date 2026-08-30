@@ -17,7 +17,7 @@ jobs:
         shell: bash
         run: |
           cat .native_src/main.part00 .native_src/main.part01 .native_src/main.part02 .native_src/main.part03 .native_src/main.part04 .native_src/main.part05 .native_src/main.part06 .native_src/main.part07 .native_src/main.part08 .native_src/main.part09 > lib/main.dart
-          test "$(wc -c < lib/main.dart)" -eq 68394
+          test "$(wc -c < lib/main.dart)" -eq 71793
           echo "b135e9bafdd740075a2def935a47e40a2ff3562647d645d455d4201a258d3ad7  lib/main.dart" | sha256sum -c -
           if grep -q "package:webview_flutter" lib/main.dart; then
             echo "WebView dependency detected - native build rejected"

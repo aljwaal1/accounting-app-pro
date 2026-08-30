@@ -1,0 +1,49 @@
+n:const InputDecoration(labelText:'البيان')),const SizedBox(height:8),TextField(controller:amount,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ')),const SizedBox(height:8),
+    DropdownButtonFormField(value:aid,decoration:const InputDecoration(labelText:'الدفع من'),items:store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text('${x.name} • ${money(x.balance)}'))).toList(),onChanged:(v)=>aid=v??aid)
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(store.addExpense(cat.text.trim(),note.text.trim(),dval(amount.text),aid))Navigator.pop(ctx);},child:const Text('حفظ'))]));
+}
+
+class ReportsScreen extends StatelessWidget{
+  final HesabatiStore store;const ReportsScreen({super.key,required this.store});
+  @override Widget build(BuildContext context){
+    final reports=[
+      ('التقرير المالي الشامل','المركز المالي ومؤشرات الربحية',Icons.assessment),
+      ('المبيعات','الفواتير والتحصيلات والمستحقات',Icons.receipt_long),
+      ('المشتريات','فواتير الموردين والمدفوعات',Icons.local_shipping),
+      ('المخزون','الكميات والتكلفة وقيمة المخزون',Icons.inventory_2),
+      ('العملاء والموردون','الأرصدة والمستحقات',Icons.people),
+      ('المصروفات','المصروفات حسب التصنيف والتاريخ',Icons.payments),
+      ('اليومية','القيود المحاسبية المدينة والدائنة',Icons.menu_book),
+    ];
+    return ListView(padding:const EdgeInsets.all(14),children:[
+      GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,crossAxisSpacing:8,mainAxisSpacing:8,childAspectRatio:1.4,children:[
+        Kpi('صافي الربح',store.netProfit,Icons.trending_up,Colors.green,store.currency),Kpi('هامش الربح',store.salesTotal==0?0:store.netProfit/store.salesTotal*100,Icons.percent,Colors.blue,'%')
+      ]),
+      const SizedBox(height:12),
+      Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[
+        FilledButton.icon(style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(48)),onPressed:store.exportExcel,icon:const Icon(Icons.table_view),label:const Text('تصدير Excel شامل ومنسق')),
+        const SizedBox(height:8),OutlinedButton.icon(style:OutlinedButton.styleFrom(minimumSize:const Size.fromHeight(48)),onPressed:store.exportBackup,icon:const Icon(Icons.backup),label:const Text('تنزيل نسخة احتياطية JSON'))
+      ]))),
+      const SizedBox(height:12),
+      ...reports.map((r)=>Card(child:ListTile(leading:CircleAvatar(child:Icon(r.$3)),title:Text(r.$1),subtitle:Text(r.$2),trailing:const Icon(Icons.picture_as_pdf,color:Colors.red),onTap:()=>store.exportPdfReport(r.$1))))
+    ]);
+  }
+}
+
+class SettingsScreen extends StatefulWidget{final HesabatiStore store;const SettingsScreen({super.key,required this.store});@override State<SettingsScreen> createState()=>_SettingsScreenState();}
+class _SettingsScreenState extends State<SettingsScreen>{
+  late TextEditingController company,currency,year,fee,branch;
+  @override void initState(){super.initState();final s=widget.store;company=TextEditingController(text:s.companyName);currency=TextEditingController(text:s.currency);year=TextEditingController(text:s.fiscalYear);fee=TextEditingController(text:s.feeRate.toString());branch=TextEditingController(text:s.branch);}
+  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(14),children:[
+    Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[
+      TextField(controller:company,decoration:const InputDecoration(labelText:'اسم الشركة')),const SizedBox(height:10),TextField(controller:branch,decoration:const InputDecoration(labelText:'الفرع الافتراضي')),const SizedBox(height:10),
+      Row(children:[Expanded(child:TextField(controller:currency,textDirection:TextDirection.ltr,decoration:const InputDecoration(labelText:'رمز العملة'))),const SizedBox(width:8),Expanded(child:TextField(controller:year,textDirection:TextDirection.ltr,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'السنة المالية')))]),
+      const SizedBox(height:10),TextField(controller:fee,textDirection:TextDirection.ltr,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'رسوم / ضريبة اختيارية %',helperText:'إعداد حسابي عام وليس ربطًا قانونيًا مع أي دولة')),
+      const SizedBox(height:14),FilledButton.icon(style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(48)),onPressed:(){final s=widget.store;s.companyName=company.text.trim();s.branch=branch.text.trim();s.currency=currency.text.trim();s.fiscalYear=year.text.trim();s.feeRate=dval(fee.text);s.save();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تم حفظ الإعدادات')));},icon:const Icon(Icons.save),label:const Text('حفظ الإعدادات'))
+    ]))),
+    const SizedBox(height:12),
+    Card(child:ListTile(leading:const Icon(Icons.info_outline),title:const Text('حساباتي Native'),subtitle:const Text('تطبيق Flutter أصلي • يعمل محليًا • لا يعتمد على صفحة ويب أو WebView')))
+  ]);
+}
+
+class EmptyBox extends StatelessWidget{final String text;const EmptyBox(this.text,{super.key});@override Widget build(BuildContext context)=>Card(child:Padding(padding:const EdgeInsets.all(28),child:Center(child:Column(children:[Icon(Icons.inbox_outlined,size:42,color:Colors.grey.shade400),const SizedBox(height:8),Text(text,style:TextStyle(color:Colors.grey.shade600))]))));}

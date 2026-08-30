@@ -1,0 +1,78 @@
+          const Padding(padding:EdgeInsets.all(12),child:Text('الأرقام: 1,234.56 • نظام محايد بين الدول',style:TextStyle(fontSize:10,color:Colors.grey)))
+          ]))
+        ),
+        body:body,
+      )
+    );
+  }
+}
+
+class DashboardScreen extends StatelessWidget{
+  final HesabatiStore store;final void Function(Section) onGo;
+  const DashboardScreen({super.key,required this.store,required this.onGo});
+  @override Widget build(BuildContext context){
+    return ListView(padding:const EdgeInsets.all(14),children:[
+      GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,crossAxisSpacing:10,mainAxisSpacing:10,childAspectRatio:1.35,children:[
+        Kpi('المبيعات',store.salesTotal,Icons.trending_up,Colors.blue,store.currency),
+        Kpi('صافي الربح',store.netProfit,Icons.savings_rounded,store.netProfit>=0?Colors.green:Colors.red,store.currency),
+        Kpi('النقدية والبنوك',store.cashTotal,Icons.account_balance,Colors.indigo,store.currency),
+        Kpi('قيمة المخزون',store.inventoryValue,Icons.inventory,Colors.orange,store.currency),
+      ]),
+      const SizedBox(height:14),
+      Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('مؤشرات العمل',style:TextStyle(fontSize:17,fontWeight:FontWeight.bold)),const SizedBox(height:12),
+        MetricRow('مستحقات العملاء',store.receivables,store.currency,Colors.orange),
+        MetricRow('مستحقات الموردين',store.payables,store.currency,Colors.red),
+        MetricRow('تكلفة البضاعة المباعة',store.cogs,store.currency,Colors.deepPurple),
+        MetricRow('إجمالي المصروفات',store.expenseTotal,store.currency,Colors.redAccent),
+      ]))),
+      const SizedBox(height:14),
+      Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('وصول سريع',style:TextStyle(fontWeight:FontWeight.bold,fontSize:17)),const SizedBox(height:12),
+        Wrap(spacing:8,runSpacing:8,children:[
+          ActionChip(avatar:const Icon(Icons.add_shopping_cart),label:const Text('فاتورة بيع'),onPressed:()=>onGo(Section.sales)),
+          ActionChip(avatar:const Icon(Icons.local_shipping),label:const Text('فاتورة شراء'),onPressed:()=>onGo(Section.purchases)),
+          ActionChip(avatar:const Icon(Icons.person_add),label:const Text('عميل / مورد'),onPressed:()=>onGo(Section.contacts)),
+          ActionChip(avatar:const Icon(Icons.inventory_2),label:const Text('منتج'),onPressed:()=>onGo(Section.inventory)),
+          ActionChip(avatar:const Icon(Icons.point_of_sale),label:const Text('POS'),onPressed:()=>onGo(Section.pos)),
+          ActionChip(avatar:const Icon(Icons.analytics),label:const Text('التقارير'),onPressed:()=>onGo(Section.reports)),
+        ])
+      ]))),
+      const SizedBox(height:14),
+      Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        const Text('تنبيهات المخزون',style:TextStyle(fontWeight:FontWeight.bold,fontSize:17)),const SizedBox(height:8),
+        ...store.products.where((p)=>p.stock<=p.minStock).map((p)=>ListTile(contentPadding:EdgeInsets.zero,leading:const CircleAvatar(child:Icon(Icons.warning_amber)),title:Text(p.name),subtitle:Text('المتاح ${money(p.stock)} • الحد الأدنى ${money(p.minStock)}')))
+      ])))
+    ]);
+  }
+}
+class Kpi extends StatelessWidget{
+  final String title,currency;final double value;final IconData icon;final Color color;
+  const Kpi(this.title,this.value,this.icon,this.color,this.currency,{super.key});
+  @override Widget build(BuildContext c)=>Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
+    Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text(title,style:TextStyle(color:Colors.grey.shade700,fontSize:12)),CircleAvatar(radius:17,backgroundColor:color.withOpacity(.12),child:Icon(icon,color:color,size:19))]),
+    FittedBox(child:Text('${money(value)} $currency',style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900)))
+  ])));
+}
+class MetricRow extends StatelessWidget{
+  final String t,c;final double v;final Color color;const MetricRow(this.t,this.v,this.c,this.color,{super.key});
+  @override Widget build(BuildContext context)=>Padding(padding:const EdgeInsets.symmetric(vertical:6),child:Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text(t),Text('${money(v)} $c',style:TextStyle(fontWeight:FontWeight.bold,color:color))]));
+}
+
+class SalesScreen extends StatelessWidget{
+  final HesabatiStore store;const SalesScreen({super.key,required this.store});
+  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(14),children:[
+    Row(children:[Expanded(child:FilledButton.icon(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>SaleForm(store:store))),icon:const Icon(Icons.add),label:const Text('فاتورة بيع جديدة'))),const SizedBox(width:8),IconButton.filledTonal(onPressed:()=>store.exportPdfReport('المبيعات'),icon:const Icon(Icons.picture_as_pdf))]),
+    const SizedBox(height:12),
+    ...store.sales.map((x)=>Card(child:ListTile(
+      leading:CircleAvatar(child:Text(x.id.split('-').last)),
+      title:Text(x.customerName),subtitle:Text('${x.id} • ${dateText(x.date)}\n${x.status}'),
+      trailing:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.end,children:[Text('${money(x.total)} ${store.currency}',style:const TextStyle(fontWeight:FontWeight.bold)),if(x.due>0)Text('متبقي ${money(x.due)}',style:const TextStyle(color:Colors.red,fontSize:11))]),
+      onTap:x.due>0?()=>showReceiveDialog(context,store,x):null
+    ))),
+    if(store.sales.isEmpty)const EmptyBox('لا توجد فواتير مبيعات بعد')
+  ]);
+}
+
+class SaleForm extends StatefulWidget{
+  final HesabatiStore store;const SaleForm({super.key,required thi

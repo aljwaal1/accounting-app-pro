@@ -1,0 +1,49 @@
+name: Build Hesabati ERP Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "hesabati-erp-pro" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create Android project files
+        run: flutter create --platforms android --org com.hesabati .
+
+      - name: Set app identity
+        shell: bash
+        run: |
+          sed -i 's/android:label="[^"]*"/android:label="حساباتي ERP"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hesabati-erp-pro-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

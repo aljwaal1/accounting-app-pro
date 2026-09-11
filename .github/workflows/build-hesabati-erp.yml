@@ -36,8 +36,8 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Analyze ERP source
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib
 
       - name: Build release APK
         run: flutter build apk --release

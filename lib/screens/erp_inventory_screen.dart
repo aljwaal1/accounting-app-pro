@@ -2,24 +2,321 @@ import 'package:flutter/material.dart';
 import '../services/erp_store.dart';
 import '../widgets/theme.dart';
 
-class ErpInventoryScreen extends StatefulWidget{
+class ErpInventoryScreen extends StatefulWidget {
   final ErpStore erp;
-  const ErpInventoryScreen({super.key,required this.erp});
-  @override State<ErpInventoryScreen> createState()=>_ErpInventoryScreenState();
+  const ErpInventoryScreen({super.key, required this.erp});
+
+  @override
+  State<ErpInventoryScreen> createState() => _ErpInventoryScreenState();
 }
-class _ErpInventoryScreenState extends State<ErpInventoryScreen>{
-  String q='';bool lowOnly=false;
-  @override Widget build(BuildContext context)=>AnimatedBuilder(animation:widget.erp,builder:(context,_){
-    final items=widget.erp.products.where((p)=>(!lowOnly||p.stock<=p.minStock)&&(q.isEmpty||p.name.toLowerCase().contains(q.toLowerCase())||p.sku.toLowerCase().contains(q.toLowerCase()))).toList();
-    return Column(children:[
-      Padding(padding:const EdgeInsets.all(16),child:Column(children:[Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('المنتجات والمخزون',style:TextStyle(fontWeight:FontWeight.w900,fontSize:24,color:darkText)),Text('الرصيد، التكلفة، الأسعار ونقاط إعادة الطلب',style:TextStyle(color:softText.withOpacity(.9),fontWeight:FontWeight.w700,fontSize:12))])),FilledButton.icon(onPressed:()=>_add(context),icon:const Icon(Icons.add_rounded),label:const Text('منتج جديد'))]),const SizedBox(height:12),Row(children:[Expanded(child:TextField(onChanged:(v)=>setState(()=>q=v),decoration:fieldDec('بحث بالاسم أو SKU',Icons.search_rounded))),const SizedBox(width:8),FilterChip(selected:lowOnly,onSelected:(v)=>setState(()=>lowOnly=v),avatar:Icon(Icons.warning_amber_rounded,size:18,color:lowOnly?Colors.white:amber),label:const Text('منخفض'))])])),
-      Expanded(child:items.isEmpty?emptyState('لا توجد أصناف مطابقة',Icons.inventory_2_outlined):LayoutBuilder(builder:(context,c){final cols=c.maxWidth>1000?4:c.maxWidth>650?3:2;return GridView.builder(padding:const EdgeInsets.fromLTRB(16,0,16,24),gridDelegate:SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:cols,crossAxisSpacing:10,mainAxisSpacing:10,childAspectRatio:c.maxWidth<450?0.88:1.12),itemCount:items.length,itemBuilder:(context,i)=>_card(context,items[i]));}))
-    ]);
-  });
 
-  Widget _card(BuildContext context,ErpProduct p){final low=p.stock<=p.minStock;return InkWell(onTap:()=>_adjust(context,p),borderRadius:BorderRadius.circular(22),child:Container(padding:const EdgeInsets.all(14),decoration:softCard(22),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Container(padding:const EdgeInsets.all(9),decoration:BoxDecoration(color:(low?coral:primary).withOpacity(.09),borderRadius:BorderRadius.circular(14)),child:Icon(Icons.inventory_2_outlined,color:low?coral:primary)),const Spacer(),if(low)tag('منخفض',coral)]),const SizedBox(height:12),Text(p.name,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:darkText,fontWeight:FontWeight.w900,fontSize:15)),Text('${p.sku} • ${p.category}',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:softText,fontSize:10.5)),const Spacer(),Row(children:[Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('الرصيد',style:TextStyle(color:softText,fontSize:10)),Text('${money(p.stock)} ${p.unit}',style:TextStyle(color:low?coral:primaryDark,fontWeight:FontWeight.w900,fontSize:16))]),const Spacer(),Column(crossAxisAlignment:CrossAxisAlignment.end,children:[const Text('قيمة المخزون',style:TextStyle(color:softText,fontSize:10)),Text(money(p.stock*p.cost),style:const TextStyle(fontWeight:FontWeight.w900,fontSize:13))])]),const Divider(height:18),Row(children:[Expanded(child:Text('تكلفة ${money(p.cost)}',style:const TextStyle(color:softText,fontSize:10,fontWeight:FontWeight.w700))),Text('بيع ${money(p.price)}',style:const TextStyle(color:creditColor,fontSize:10,fontWeight:FontWeight.w900))])])));}
+class _ErpInventoryScreenState extends State<ErpInventoryScreen> {
+  String q = '';
+  bool lowOnly = false;
 
-  Future<void> _add(BuildContext context)async{final name=TextEditingController(),sku=TextEditingController(),cat=TextEditingController(text:'عام'),unit=TextEditingController(text:'قطعة'),cost=TextEditingController(text:'0'),price=TextEditingController(text:'0'),stock=TextEditingController(text:'0'),min=TextEditingController(text:'0');await showModalBottomSheet(context:context,isScrollControlled:true,showDragHandle:true,builder:(ctx)=>Padding(padding:EdgeInsets.fromLTRB(18,8,18,MediaQuery.viewInsetsOf(ctx).bottom+18),child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('إضافة منتج',style:TextStyle(fontWeight:FontWeight.w900,fontSize:21)),const SizedBox(height:14),TextField(controller:name,decoration:fieldDec('اسم المنتج',Icons.inventory_2_outlined)),const SizedBox(height:8),Row(children:[Expanded(child:TextField(controller:sku,decoration:fieldDec('SKU / باركود',Icons.qr_code_rounded))),const SizedBox(width:8),Expanded(child:TextField(controller:cat,decoration:fieldDec('الفئة',Icons.category_outlined)))]),const SizedBox(height:8),Row(children:[Expanded(child:TextField(controller:unit,decoration:fieldDec('الوحدة',Icons.straighten_outlined))),const SizedBox(width:8),Expanded(child:TextField(controller:min,keyboardType:TextInputType.number,decoration:fieldDec('حد إعادة الطلب',Icons.notification_important_outlined)))]),const SizedBox(height:8),Row(children:[Expanded(child:TextField(controller:cost,keyboardType:TextInputType.number,decoration:fieldDec('التكلفة',Icons.payments_outlined))),const SizedBox(width:8),Expanded(child:TextField(controller:price,keyboardType:TextInputType.number,decoration:fieldDec('سعر البيع',Icons.sell_outlined)))]),const SizedBox(height:8),TextField(controller:stock,keyboardType:TextInputType.number,decoration:fieldDec('الرصيد الافتتاحي',Icons.inventory_outlined)),const SizedBox(height:14),FilledButton(onPressed:(){if(name.text.trim().isEmpty)return;widget.erp.addProduct(name:name.text.trim(),sku:sku.text.trim(),category:cat.text.trim(),unit:unit.text.trim(),cost:double.tryParse(cost.text)??0,price:double.tryParse(price.text)??0,stock:double.tryParse(stock.text)??0,minStock:double.tryParse(min.text)??0,postOpening:true);Navigator.pop(ctx);},style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(48)),child:const Text('حفظ المنتج'))]))));}
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.erp,
+      builder: (context, _) {
+        final items = widget.erp.products.where((p) {
+          final matchesLow = !lowOnly || p.stock <= p.minStock;
+          final query = q.toLowerCase();
+          final matchesSearch = q.isEmpty ||
+              p.name.toLowerCase().contains(query) ||
+              p.sku.toLowerCase().contains(query);
+          return matchesLow && matchesSearch;
+        }).toList();
 
-  Future<void> _adjust(BuildContext context,ErpProduct p)async{final c=TextEditingController(text:p.stock.toStringAsFixed(2));final v=await showModalBottomSheet<double>(context:context,isScrollControlled:true,showDragHandle:true,builder:(ctx)=>Padding(padding:EdgeInsets.fromLTRB(18,8,18,MediaQuery.viewInsetsOf(ctx).bottom+18),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[Text('تسوية مخزون • ${p.name}',style:const TextStyle(fontWeight:FontWeight.w900,fontSize:19)),const SizedBox(height:12),TextField(controller:c,keyboardType:TextInputType.number,decoration:fieldDec('الكمية الفعلية',Icons.inventory_outlined)),const SizedBox(height:14),FilledButton(onPressed:()=>Navigator.pop(ctx,double.tryParse(c.text)),style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(48)),child:const Text('اعتماد التسوية'))]));if(v!=null)await widget.erp.adjustStock(p,v);}
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'المنتجات والمخزون',
+                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24, color: darkText),
+                            ),
+                            Text(
+                              'الرصيد، التكلفة، الأسعار ونقاط إعادة الطلب',
+                              style: TextStyle(color: softText.withOpacity(.9), fontWeight: FontWeight.w700, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () => _add(context),
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('منتج جديد'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          onChanged: (v) => setState(() => q = v),
+                          decoration: fieldDec('بحث بالاسم أو SKU', Icons.search_rounded),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilterChip(
+                        selected: lowOnly,
+                        onSelected: (v) => setState(() => lowOnly = v),
+                        avatar: Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: lowOnly ? Colors.white : amber,
+                        ),
+                        label: const Text('منخفض'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: items.isEmpty
+                  ? emptyState('لا توجد أصناف مطابقة', Icons.inventory_2_outlined)
+                  : LayoutBuilder(
+                      builder: (context, c) {
+                        final cols = c.maxWidth > 1000 ? 4 : (c.maxWidth > 650 ? 3 : 2);
+                        return GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: cols,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: c.maxWidth < 450 ? .88 : 1.12,
+                          ),
+                          itemCount: items.length,
+                          itemBuilder: (context, i) => _card(context, items[i]),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _card(BuildContext context, ErpProduct p) {
+    final low = p.stock <= p.minStock;
+    final color = low ? coral : primary;
+    return InkWell(
+      onTap: () => _adjust(context, p),
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: softCard(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(color: color.withOpacity(.09), borderRadius: BorderRadius.circular(14)),
+                  child: Icon(Icons.inventory_2_outlined, color: color),
+                ),
+                const Spacer(),
+                if (low) tag('منخفض', coral),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              p.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: darkText, fontWeight: FontWeight.w900, fontSize: 15),
+            ),
+            Text(
+              '${p.sku} • ${p.category}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: softText, fontSize: 10.5),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('الرصيد', style: TextStyle(color: softText, fontSize: 10)),
+                    Text(
+                      '${money(p.stock)} ${p.unit}',
+                      style: TextStyle(color: low ? coral : primaryDark, fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('قيمة المخزون', style: TextStyle(color: softText, fontSize: 10)),
+                    Text(money(p.stock * p.cost), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'تكلفة ${money(p.cost)}',
+                    style: const TextStyle(color: softText, fontSize: 10, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Text(
+                  'بيع ${money(p.price)}',
+                  style: const TextStyle(color: creditColor, fontSize: 10, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _add(BuildContext context) async {
+    final name = TextEditingController();
+    final sku = TextEditingController();
+    final cat = TextEditingController(text: 'عام');
+    final unit = TextEditingController(text: 'قطعة');
+    final cost = TextEditingController(text: '0');
+    final price = TextEditingController(text: '0');
+    final stock = TextEditingController(text: '0');
+    final minStock = TextEditingController(text: '0');
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(18, 8, 18, MediaQuery.viewInsetsOf(ctx).bottom + 18),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('إضافة منتج', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 21)),
+              const SizedBox(height: 14),
+              TextField(controller: name, decoration: fieldDec('اسم المنتج', Icons.inventory_2_outlined)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: TextField(controller: sku, decoration: fieldDec('SKU / باركود', Icons.qr_code_rounded))),
+                  const SizedBox(width: 8),
+                  Expanded(child: TextField(controller: cat, decoration: fieldDec('الفئة', Icons.category_outlined))),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: TextField(controller: unit, decoration: fieldDec('الوحدة', Icons.straighten_outlined))),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: minStock,
+                      keyboardType: TextInputType.number,
+                      decoration: fieldDec('حد إعادة الطلب', Icons.notification_important_outlined),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: cost,
+                      keyboardType: TextInputType.number,
+                      decoration: fieldDec('التكلفة', Icons.payments_outlined),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: price,
+                      keyboardType: TextInputType.number,
+                      decoration: fieldDec('سعر البيع', Icons.sell_outlined),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: stock,
+                keyboardType: TextInputType.number,
+                decoration: fieldDec('الرصيد الافتتاحي', Icons.inventory_outlined),
+              ),
+              const SizedBox(height: 14),
+              FilledButton(
+                onPressed: () {
+                  if (name.text.trim().isEmpty) return;
+                  widget.erp.addProduct(
+                    name: name.text.trim(),
+                    sku: sku.text.trim(),
+                    category: cat.text.trim(),
+                    unit: unit.text.trim(),
+                    cost: double.tryParse(cost.text) ?? 0,
+                    price: double.tryParse(price.text) ?? 0,
+                    stock: double.tryParse(stock.text) ?? 0,
+                    minStock: double.tryParse(minStock.text) ?? 0,
+                    postOpening: true,
+                  );
+                  Navigator.pop(ctx);
+                },
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                child: const Text('حفظ المنتج'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _adjust(BuildContext context, ErpProduct p) async {
+    final controller = TextEditingController(text: p.stock.toStringAsFixed(2));
+    final value = await showModalBottomSheet<double>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(18, 8, 18, MediaQuery.viewInsetsOf(ctx).bottom + 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('تسوية مخزون • ${p.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 19)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: fieldDec('الكمية الفعلية', Icons.inventory_outlined),
+            ),
+            const SizedBox(height: 14),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, double.tryParse(controller.text)),
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              child: const Text('اعتماد التسوية'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (value != null) await widget.erp.adjustStock(p, value);
+  }
 }

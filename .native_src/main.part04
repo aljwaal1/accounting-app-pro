@@ -94,6 +94,11 @@ class ProKpi extends StatelessWidget{
     FittedBox(child:Text('${money(value)} $currency',style:const TextStyle(color:Color(0xFF0B163F),fontSize:18,fontWeight:FontWeight.w900)))
   ])));
 }
+class Kpi extends StatelessWidget{
+  final String title,currency;final double value;final IconData icon;final Color color;
+  const Kpi(this.title,this.value,this.icon,this.color,this.currency,{super.key});
+  @override Widget build(BuildContext context)=>ProKpi(title,value,icon,color,currency);
+}
 class MetricRow extends StatelessWidget{
   final String t,c;final double v;final Color color;const MetricRow(this.t,this.v,this.c,this.color,{super.key});
   @override Widget build(BuildContext context)=>Row(children:[

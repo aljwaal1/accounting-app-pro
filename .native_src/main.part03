@@ -47,6 +47,7 @@ ney(x.due)]).toList();
   }
 }
 
+
 class HesabatiApp extends StatefulWidget {
   const HesabatiApp({super.key});
   @override State<HesabatiApp> createState()=>_HesabatiAppState();
@@ -56,24 +57,32 @@ class _HesabatiAppState extends State<HesabatiApp>{
   @override void initState(){super.initState();store.init();}
   @override Widget build(BuildContext context){
     return AnimatedBuilder(animation:store,builder:(context,_){
+      const navy=Color(0xFF0B163F),blue=Color(0xFF2563EB),bg=Color(0xFFF5F7FC);
       return MaterialApp(
-        debugShowCheckedModeBanner:false,
-        locale:const Locale('ar'),
-        title:'حساباتي',
+        debugShowCheckedModeBanner:false,locale:const Locale('ar'),title:'حساباتي',
         theme:ThemeData(
-          useMaterial3:true,
-          fontFamily:'sans-serif',
-          colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFF2563EB),brightness:Brightness.light),
-          scaffoldBackgroundColor:const Color(0xFFF5F7FB),
-          cardTheme:const CardThemeData(elevation:0,margin:EdgeInsets.zero,shape:RoundedRectangleBorder(borderRadius:BorderRadius.all(Radius.circular(18))),color:Colors.white),
-          inputDecorationTheme:InputDecorationTheme(filled:true,fillColor:Colors.white,border:OutlineInputBorder(borderRadius:BorderRadius.circular(14),borderSide:const BorderSide(color:Color(0xFFE3E8F0))),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(14),borderSide:const BorderSide(color:Color(0xFFE3E8F0)))),
+          useMaterial3:true,fontFamily:'sans-serif',scaffoldBackgroundColor:bg,
+          colorScheme:ColorScheme.fromSeed(seedColor:blue,primary:blue,secondary:const Color(0xFF06B6D4),surface:Colors.white),
+          cardTheme:CardThemeData(elevation:0,margin:EdgeInsets.zero,color:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(22),side:const BorderSide(color:Color(0xFFE8ECF4)))),
+          appBarTheme:const AppBarTheme(backgroundColor:bg,foregroundColor:navy,elevation:0,scrolledUnderElevation:0),
+          inputDecorationTheme:InputDecorationTheme(
+            filled:true,fillColor:Colors.white,
+            border:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:Color(0xFFE1E7F0))),
+            enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:Color(0xFFE1E7F0))),
+            focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:blue,width:1.5)),
+            contentPadding:const EdgeInsets.symmetric(horizontal:15,vertical:14)
+          ),
+          filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),padding:const EdgeInsets.symmetric(horizontal:18,vertical:14))),
+          navigationBarTheme:NavigationBarThemeData(
+            height:72,backgroundColor:Colors.white,indicatorColor:const Color(0xFFE8F0FF),
+            labelTextStyle:WidgetStateProperty.resolveWith((states)=>TextStyle(fontWeight:states.contains(WidgetState.selected)?FontWeight.w800:FontWeight.w600,fontSize:11,color:states.contains(WidgetState.selected)?blue:const Color(0xFF7A849A)))
+          )
         ),
         home:store.ready?HomeShell(store:store):const Scaffold(body:Center(child:CircularProgressIndicator())),
       );
     });
   }
 }
-
 enum Section { dashboard,sales,purchases,contacts,inventory,pos,accounting,cash,expenses,reports,settings }
 
 class HomeShell extends StatefulWidget{
@@ -82,42 +91,75 @@ class HomeShell extends StatefulWidget{
 }
 class _HomeShellState extends State<HomeShell>{
   Section section=Section.dashboard;
+  final scaffoldKey=GlobalKey<ScaffoldState>();
+  static const navy=Color(0xFF0B163F),blue=Color(0xFF2563EB),muted=Color(0xFF7A849A);
   final labels={
-    Section.dashboard:'لوحة التحكم',Section.sales:'المبيعات والفواتير',Section.purchases:'المشتريات',Section.contacts:'العملاء والموردون',
-    Section.inventory:'المنتجات والمخزون',Section.pos:'نقطة البيع POS',Section.accounting:'المحاسبة العامة',Section.cash:'الخزائن والبنوك',
+    Section.dashboard:'الرئيسية',Section.sales:'المبيعات',Section.purchases:'المشتريات',Section.contacts:'العملاء والموردون',
+    Section.inventory:'المنتجات والمخزون',Section.pos:'نقطة البيع',Section.accounting:'المحاسبة',Section.cash:'الخزائن والبنوك',
     Section.expenses:'المصروفات',Section.reports:'التقارير',Section.settings:'الإعدادات'
   };
   final icons={
-    Section.dashboard:Icons.dashboard_rounded,Section.sales:Icons.receipt_long_rounded,Section.purchases:Icons.local_shipping_rounded,Section.contacts:Icons.people_alt_rounded,
+    Section.dashboard:Icons.space_dashboard_rounded,Section.sales:Icons.receipt_long_rounded,Section.purchases:Icons.local_shipping_rounded,Section.contacts:Icons.people_alt_rounded,
     Section.inventory:Icons.inventory_2_rounded,Section.pos:Icons.point_of_sale_rounded,Section.accounting:Icons.account_balance_wallet_rounded,Section.cash:Icons.account_balance_rounded,
     Section.expenses:Icons.payments_rounded,Section.reports:Icons.analytics_rounded,Section.settings:Icons.settings_rounded
   };
+  int primaryIndex(){if(section==Section.dashboard)return 0;if(section==Section.sales)return 1;if(section==Section.pos)return 2;if(section==Section.reports)return 3;return 4;}
   @override Widget build(BuildContext context){
     final s=widget.store;
-    Widget body=switch(section){
+    final body=switch(section){
       Section.dashboard=>DashboardScreen(store:s,onGo:(x)=>setState(()=>section=x)),
-      Section.sales=>SalesScreen(store:s),
-      Section.purchases=>PurchasesScreen(store:s),
-      Section.contacts=>ContactsScreen(store:s),
-      Section.inventory=>InventoryScreen(store:s),
-      Section.pos=>PosScreen(store:s),
-      Section.accounting=>AccountingScreen(store:s),
-      Section.cash=>CashScreen(store:s),
-      Section.expenses=>ExpensesScreen(store:s),
-      Section.reports=>ReportsScreen(store:s),
-      Section.settings=>SettingsScreen(store:s),
+      Section.sales=>SalesScreen(store:s),Section.purchases=>PurchasesScreen(store:s),Section.contacts=>ContactsScreen(store:s),
+      Section.inventory=>InventoryScreen(store:s),Section.pos=>PosScreen(store:s),Section.accounting=>AccountingScreen(store:s),
+      Section.cash=>CashScreen(store:s),Section.expenses=>ExpensesScreen(store:s),Section.reports=>ReportsScreen(store:s),Section.settings=>SettingsScreen(store:s),
     };
-    return Directionality(
-      textDirection:TextDirection.rtl,
-      child:Scaffold(
-        appBar:AppBar(
-          title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(labels[section]!,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:20)),
-            Text('${s.companyName} • ${s.branch}',style:TextStyle(fontSize:11,color:Colors.grey.shade600))
-          ]),
-          centerTitle:false,
+    return Directionality(textDirection:TextDirection.rtl,child:Scaffold(
+      key:scaffoldKey,
+      appBar:AppBar(
+        toolbarHeight:72,
+        leading:IconButton(onPressed:()=>scaffoldKey.currentState?.openDrawer(),icon:const Icon(Icons.menu_rounded)),
+        title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text(labels[section]!,style:const TextStyle(fontWeight:FontWeight.w900,fontSize:20,color:navy)),
+          const SizedBox(height:2),Text('${s.companyName}  •  ${s.branch}',style:const TextStyle(fontSize:10.5,color:muted,fontWeight:FontWeight.w600))
+        ]),
+        actions:[if(section!=Section.settings)IconButton(onPressed:()=>setState(()=>section=Section.settings),icon:const Icon(Icons.tune_rounded)),const SizedBox(width:6)]
+      ),
+      drawer:Drawer(backgroundColor:Colors.white,child:SafeArea(child:Column(children:[
+        Container(
+          width:double.infinity,margin:const EdgeInsets.all(12),padding:const EdgeInsets.all(18),
+          decoration:BoxDecoration(gradient:const LinearGradient(colors:[navy,Color(0xFF183C8A)],begin:Alignment.topRight,end:Alignment.bottomLeft),borderRadius:BorderRadius.circular(24)),
+          child:Row(children:[
+            Container(width:52,height:52,decoration:BoxDecoration(color:Colors.white.withOpacity(.14),borderRadius:BorderRadius.circular(16)),child:const Icon(Icons.account_balance_wallet_rounded,color:Colors.white,size:28)),
+            const SizedBox(width:12),
+            const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text('حساباتي',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w900)),
+              Text('إدارة أعمال ومحاسبة متكاملة',style:TextStyle(color:Color(0xFFC7D7FF),fontSize:10.5,fontWeight:FontWeight.w600))
+            ]))
+          ])
         ),
-        drawer:Drawer(
-          child:SafeArea(child:Column(children:[
-            Container(
-              width:double.infinity,padd
+        Expanded(child:ListView(padding:const EdgeInsets.symmetric(horizontal:10),children:Section.values.map((e){
+          final selected=section==e;
+          return Padding(padding:const EdgeInsets.only(bottom:4),child:ListTile(
+            leading:Icon(icons[e],color:selected?blue:muted),
+            title:Text(labels[e]!,style:TextStyle(fontWeight:selected?FontWeight.w800:FontWeight.w600,color:selected?navy:const Color(0xFF4B5568))),
+            selected:selected,selectedTileColor:const Color(0xFFEFF4FF),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14)),
+            onTap:(){Navigator.pop(context);setState(()=>section=e);}
+          ));
+        }).toList())),
+        const Padding(padding:EdgeInsets.all(14),child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+          Icon(Icons.offline_bolt_rounded,size:14,color:Color(0xFF16A34A)),SizedBox(width:5),
+          Text('يعمل محليًا • بياناتك على جهازك',style:TextStyle(fontSize:10,color:muted,fontWeight:FontWeight.w600))
+        ]))
+      ]))),
+      body:AnimatedSwitcher(duration:const Duration(milliseconds:180),child:KeyedSubtree(key:ValueKey(section),child:body)),
+      bottomNavigationBar:NavigationBar(
+        selectedIndex:primaryIndex(),
+        onDestinationSelected:(i){
+          if(i==0)setState(()=>section=Section.dashboard);if(i==1)setState(()=>section=Section.sales);if(i==2)setState(()=>section=Section.pos);if(i==3)setState(()=>section=Section.reports);if(i==4)scaffoldKey.currentState?.openDrawer();
+        },
+        destinations:const [
+          NavigationDestination(icon:Icon(Icons.space_dashboard_outlined),selectedIcon:Icon(Icons.space_dashboard_rounded),label:'الرئيسية'),
+          NavigationDestination(icon:Icon(Icons.receipt_long_outlined),selectedIcon:Icon(Icons.receipt_long_rounded),label:'المبيعات'),
+          NavigationDestination(icon:Icon(Icons.point_of_sale_outlined),selectedIcon:Icon(Icons.point_of_sale_rounded),label:'POS'),
+          NavigationDestination(icon:Icon(Icons.analytics_outlined),selectedIcon:Icon(Icons.analytics_rounded),label:'التقارير'),
+          NavigationDestination(icon:Icon(Icons.apps_rounded),label:'المزيد')
+        ]

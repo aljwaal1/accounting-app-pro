@@ -27,14 +27,33 @@
   }
 
   void adjustStock(Product p,double newStock){
+    if(!newStock.isFinite || newStock<0 || !p.cost.isFinite || p.cost<0)return;
     final diff=newStock-p.stock;if(diff==0)return;
-    final value=diff.abs()*p.cost;p.stock=newStock;
-    if(diff>0)addJournal(next('ADJ'),'زيادة جرد ${p.name}',[JournalLine('المخزون',debit:value),JournalLine('فروقات الجرد',credit:value)],silent:true);
-    else addJournal(next('ADJ'),'نقص جرد ${p.name}',[JournalLine('فروقات الجرد',debit:value),JournalLine('المخزون',credit:value)],silent:true);
+    final value=diff.abs()*p.cost;
+    if(!value.isFinite)return;
+    if(value>0){
+      if(diff>0)addJournal(next('ADJ'),'زيادة جرد ${p.name}',[JournalLine('المخزون',debit:value),JournalLine('فروقات الجرد',credit:value)],silent:true);
+      else addJournal(next('ADJ'),'نقص جرد ${p.name}',[JournalLine('فروقات الجرد',debit:value),JournalLine('المخزون',credit:value)],silent:true);
+    }
+    p.stock=newStock;
     save();
   }
 
   void addJournal(String ref,String note,List<JournalLine> lines,{bool silent=false}){
+    if(lines.length<2)throw StateError('القيد يحتاج إلى طرفين على الأقل');
+    double totalDebit=0,totalCredit=0;
+    for(final line in lines){
+      if(line.account.trim().isEmpty || !line.debit.isFinite || !line.credit.isFinite ||
+          line.debit<0 || line.credit<0 || (line.debit>0)==(line.credit>0)){
+        throw StateError('سطر القيد يجب أن يحتوي على مبلغ مدين أو دائن موجب فقط');
+      }
+      totalDebit+=line.debit;
+      totalCredit+=line.credit;
+    }
+    if(!totalDebit.isFinite || !totalCredit.isFinite ||
+        totalDebit<=0 || (totalDebit-totalCredit).abs()>0.005){
+      throw StateError('القيد غير متوازن: مجموع المدين لا يساوي مجموع الدائن');
+    }
     journals.insert(0,JournalEntry(id:next('J'),ref:ref,note:note,date:DateTime.now(),lines:lines));
     if(!silent)save();
   }

@@ -20,29 +20,5 @@ void stockAdjustDialog(BuildContext context,HesabatiStore store,Product p){
   showDialog(context:context,builder:(ctx)=>AlertDialog(title:Text('تسوية مخزون • ${p.name}'),content:TextField(controller:c,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الكمية الفعلية')),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){store.adjustStock(p,dval(c.text));Navigator.pop(ctx);},child:const Text('اعتماد التسوية'))]));
 }
 
-class PosScreen extends StatefulWidget{final HesabatiStore store;const PosScreen({super.key,required this.store});@override State<PosScreen> createState()=>_PosScreenState();}
-class _PosScreenState extends State<PosScreen>{
-  final Map<String,double> cart={};String customerId='',accountId='';
-  @override void initState(){super.initState();final c=widget.store.contacts.where((e)=>e.type=='عميل').toList();customerId=c.isNotEmpty?c.first.id:'';accountId=widget.store.cashAccounts.first.id;}
-  @override Widget build(BuildContext context){
-    final lines=cart.entries.map((e){final p=widget.store.product(e.key)!;return DocLine(productId:p.id,name:p.name,qty:e.value,price:p.price,cost:p.cost);}).toList();final total=lines.fold<double>(0,(s,l)=>s+l.total);
-    return ListView(padding:const EdgeInsets.all(14),children:[
-      Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(children:[
-        DropdownButtonFormField(value:customerId.isEmpty?null:customerId,decoration:const InputDecoration(labelText:'العميل'),items:widget.store.contacts.where((e)=>e.type=='عميل').map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>setState(()=>customerId=v??'')),
-        const SizedBox(height:8),DropdownButtonFormField(value:accountId,decoration:const InputDecoration(labelText:'طريقة التحصيل'),items:widget.store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>setState(()=>accountId=v??accountId))
-      ]))),
-      const SizedBox(height:12),
-      GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,crossAxisSpacing:8,mainAxisSpacing:8,childAspectRatio:1.2,children:widget.store.products.map((p)=>InkWell(onTap:p.stock<=0?null:()=>setState(()=>cart[p.id]=(cart[p.id]??0)+1),child:Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text(p.name,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.bold)),Text('${money(p.price)} ${widget.store.currency}',style:const TextStyle(color:Colors.blue,fontWeight:FontWeight.bold)),Text('متاح ${money(p.stock)}',style:const TextStyle(fontSize:10,color:Colors.grey))]))))).toList()),
-      const SizedBox(height:12),
-      Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('السلة',style:TextStyle(fontWeight:FontWeight.bold,fontSize:17)),
-        ...lines.map((l)=>ListTile(contentPadding:EdgeInsets.zero,title:Text(l.name),subtitle:Text('الكمية ${money(l.qty)}'),trailing:Row(mainAxisSize:MainAxisSize.min,children:[Text(money(l.total)),IconButton(onPressed:()=>setState((){final q=(cart[l.productId]??1)-1;if(q<=0)cart.remove(l.productId);else cart[l.productId]=q;}),icon:const Icon(Icons.remove_circle_outline))]))),
-        const Divider(),MetricRow('الإجمالي',total,widget.store.currency,Colors.blue),
-        const SizedBox(height:8),FilledButton.icon(style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(48)),onPressed:lines.isEmpty?null:(){final ok=widget.store.addSale(customerId:customerId,lines:lines,discount:0,feeRate:widget.store.feeRate,paid:total+(total*widget.store.feeRate/100),accountId:accountId);if(ok){setState(()=>cart.clear());ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تمت عملية البيع بنجاح')));}},icon:const Icon(Icons.payments),label:const Text('إتمام الدفع'))
-      ])))
-    ]);
-  }
-}
-
 class AccountingScreen extends StatelessWidget{
   final HesabatiStore store;const AccountingScreen({super.ke

@@ -5,7 +5,7 @@
   }
 
   bool addExpense(String category,String note,double amount,String accountId){
-    final a=cash(accountId); if(a==null || amount<=0 || a.balance<amount)return false;
+    final a=cash(accountId); if(a==null || !amount.isFinite || amount<=0 || a.balance<amount)return false;
     a.balance-=amount;
     final id=next('EXP');
     expenses.insert(0,Expense(id:id,category:category,note:note,accountId:accountId,date:DateTime.now(),amount:amount));

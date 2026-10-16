@@ -14,6 +14,8 @@ class ReportsScreen extends StatelessWidget{
       ('العملاء والموردون','الأرصدة والمستحقات',Icons.people),
       ('المصروفات','المصروفات حسب التصنيف والتاريخ',Icons.payments),
       ('اليومية','القيود المحاسبية المدينة والدائنة',Icons.menu_book),
+      ('ميزان المراجعة','إجمالي المدين والدائن ورصيد كل حساب',Icons.balance),
+      ('الخزائن والبنوك','أرصدة الحسابات النقدية والبنكية',Icons.account_balance),
     ];
     return ListView(padding:const EdgeInsets.all(14),children:[
       GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:2,crossAxisSpacing:8,mainAxisSpacing:8,childAspectRatio:1.4,children:[

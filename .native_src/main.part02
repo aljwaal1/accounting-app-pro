@@ -101,12 +101,12 @@
 
   Future<void> exportPdfReport(String kind) async{
     final doc=pw.Document();
-    final font=await PdfGoogleFonts.cairoRegular();
-    final bold=await PdfGoogleFonts.cairoBold();
+    final font=await PdfGoogleFonts.notoNaskhArabicRegular();
+    final bold=await PdfGoogleFonts.notoNaskhArabicBold();
     List<String> headers=[];List<List<String>> rows=[];String title=kind;
     if(kind=='المبيعات'){
-      headers=['رقم','التاريخ','العميل','الإجمالي','المدفوع','المتبقي'];
-      rows=sales.map((x)=>[x.id,dateText(x.date),x.customerName,money(x.total),money(x.paid),money(x.due)]).toList();
+      headers=['رقم','التاريخ','العميل','الإجمالي','المدفوع','المتبقي','الحالة'];
+      rows=sales.map((x)=>[x.id,dateText(x.date),x.customerName,money(x.total),money(x.paid),money(x.due),x.status]).toList();
     }else if(kind=='المشتريات'){
-      headers=['رقم','التاريخ','المورد','الإجمالي','المدفوع','المتبقي'];
-      rows=purchases.map((x)=>[x.id,dateText(x.date),x.supplierName,money(x.total),money(x.paid),mo
+      headers=['رقم','التاريخ','المورد','الإجمالي','المدفوع','المتبقي','الحالة'];
+      rows=purchases.map((x)=>[x.id,dateText(x.date)

@@ -41,7 +41,6 @@ class DashboardScreen extends StatelessWidget{
       SizedBox(height:112,child:ListView(scrollDirection:Axis.horizontal,children:[
         _quick('فاتورة بيع',Icons.add_shopping_cart_rounded,blue,()=>onGo(Section.sales)),
         _quick('فاتورة شراء',Icons.local_shipping_rounded,const Color(0xFF8B5CF6),()=>onGo(Section.purchases)),
-        _quick('نقطة البيع',Icons.point_of_sale_rounded,const Color(0xFF0891B2),()=>onGo(Section.pos)),
         _quick('منتج',Icons.inventory_2_rounded,const Color(0xFFF59E0B),()=>onGo(Section.inventory)),
         _quick('عميل / مورد',Icons.person_add_alt_1_rounded,const Color(0xFF16A34A),()=>onGo(Section.contacts)),
       ])),

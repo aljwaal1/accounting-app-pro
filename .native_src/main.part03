@@ -1,7 +1,7 @@
-ney(x.due)]).toList();
+,x.supplierName,money(x.total),money(x.paid),money(x.due),x.status]).toList();
     }else if(kind=='المخزون'){
-      headers=['SKU','المنتج','الكمية','التكلفة','سعر البيع','القيمة'];
-      rows=products.map((x)=>[x.sku,x.name,money(x.stock),money(x.cost),money(x.price),money(x.stock*x.cost)]).toList();
+      headers=['SKU','المنتج','الفئة','الكمية','التكلفة','سعر البيع','القيمة'];
+      rows=products.map((x)=>[x.sku,x.name,x.category,money(x.stock),money(x.cost),money(x.price),money(x.stock*x.cost)]).toList();
     }else if(kind=='العملاء والموردون'){
       headers=['النوع','الاسم','الهاتف','الرصيد'];
       rows=contacts.map((x)=>[x.type,x.name,x.phone,money(x.balance)]).toList();
@@ -9,38 +9,59 @@ ney(x.due)]).toList();
       headers=['التاريخ','التصنيف','البيان','المبلغ'];
       rows=expenses.map((x)=>[dateText(x.date),x.category,x.note,money(x.amount)]).toList();
     }else if(kind=='اليومية'){
-      headers=['التاريخ','المرجع','الحساب','مدين','دائن'];
-      for(final x in journals){for(final l in x.lines)rows.add([dateText(x.date),x.ref,l.account,money(l.debit),money(l.credit)]);}
+      headers=['التاريخ','المرجع','البيان','الحساب','مدين','دائن'];
+      for(final x in journals){for(final l in x.lines)rows.add([dateText(x.date),x.ref,x.note,l.account,money(l.debit),money(l.credit)]);}
+    }else if(kind=='ميزان المراجعة'){
+      headers=['الحساب','إجمالي المدين','إجمالي الدائن','الرصيد'];
+      final totals=<String,List<double>>{};
+      for(final j in journals){for(final l in j.lines){final t=totals.putIfAbsent(l.account,()=>[0,0]);t[0]+=l.debit;t[1]+=l.credit;}}
+      final names=totals.keys.toList()..sort();
+      rows=names.map((name){final t=totals[name]!;return [name,money(t[0]),money(t[1]),money(t[0]-t[1])];}).toList();
+    }else if(kind=='الخزائن والبنوك'){
+      headers=['الحساب','النوع','الرصيد'];
+      rows=cashAccounts.map((x)=>[x.name,x.type,money(x.balance)]).toList();
     }else{
       title='التقرير المالي الشامل';
       headers=['المؤشر','القيمة'];
-      rows=[['إجمالي المبيعات',money(salesTotal)],['إجمالي المشتريات',money(purchasesTotal)],['تكلفة البضاعة المباعة',money(cogs)],['مجمل الربح',money(grossProfit)],['المصروفات',money(expenseTotal)],['صافي الربح',money(netProfit)],['النقدية والبنوك',money(cashTotal)],['العملاء',money(receivables)],['الموردون',money(payables)],['قيمة المخزون',money(inventoryValue)]];
+      rows=[['إجمالي المبيعات',money(salesTotal)],['إجمالي المشتريات',money(purchasesTotal)],['تكلفة البضاعة المباعة',money(cogs)],['مجمل الربح',money(grossProfit)],['المصروفات',money(expenseTotal)],['صافي الربح',money(netProfit)],['النقدية والبنوك',money(cashTotal)],['مستحقات العملاء',money(receivables)],['مستحقات الموردين',money(payables)],['قيمة المخزون',money(inventoryValue)]];
     }
+    final pdfHeaders=headers.reversed.toList();
+    final pdfRows=rows.map((r)=>r.reversed.toList()).toList();
     doc.addPage(pw.MultiPage(
       pageFormat:PdfPageFormat.a4,
       textDirection:pw.TextDirection.rtl,
       theme:pw.ThemeData.withFont(base:font,bold:bold),
-      margin:const pw.EdgeInsets.all(28),
+      margin:const pw.EdgeInsets.fromLTRB(24,26,24,28),
       header:(ctx)=>pw.Container(
-        padding:const pw.EdgeInsets.all(14),
-        decoration:pw.BoxDecoration(color:PdfColor.fromHex('#EAF1FF'),borderRadius:pw.BorderRadius.circular(12)),
-        child:pw.Row(mainAxisAlignment:pw.MainAxisAlignment.spaceBetween,children:[
-          pw.Column(crossAxisAlignment:pw.CrossAxisAlignment.start,children:[pw.Text(companyName,style:pw.TextStyle(font:bold,fontSize:14,color:PdfColor.fromHex('#12224B'))),pw.Text(title,style:pw.TextStyle(font:bold,fontSize:19))]),
-          pw.Text('${dateText(DateTime.now())}  |  $currency',style:pw.TextStyle(fontSize:9,color:PdfColors.grey700)),
+        width:double.infinity,padding:const pw.EdgeInsets.symmetric(horizontal:14,vertical:12),
+        decoration:pw.BoxDecoration(color:PdfColor.fromHex('#F0F4FF'),border:pw.Border.all(color:PdfColor.fromHex('#D9E3F7')),borderRadius:pw.BorderRadius.circular(10)),
+        child:pw.Column(crossAxisAlignment:pw.CrossAxisAlignment.end,children:[
+          pw.Text(companyName,textDirection:pw.TextDirection.rtl,textAlign:pw.TextAlign.right,style:pw.TextStyle(font:bold,fontSize:14,color:PdfColor.fromHex('#0B163F'))),
+          pw.SizedBox(height:3),
+          pw.Text(title,textDirection:pw.TextDirection.rtl,textAlign:pw.TextAlign.right,style:pw.TextStyle(font:bold,fontSize:20,color:PdfColor.fromHex('#12224B'))),
+          pw.SizedBox(height:4),
+          pw.Text('الفترة: السنة المالية $fiscalYear   •   الفرع: $branch   •   العملة: $currency   •   تاريخ الطباعة: ${dateText(DateTime.now())}',textDirection:pw.TextDirection.rtl,textAlign:pw.TextAlign.right,style:pw.TextStyle(font:font,fontSize:8.5,color:PdfColors.grey700)),
         ]),
       ),
-      footer:(ctx)=>pw.Align(alignment:pw.Alignment.center,child:pw.Text('حساباتي  •  صفحة ${ctx.pageNumber} من ${ctx.pagesCount}',style:const pw.TextStyle(fontSize:8,color:PdfColors.grey600))),
+      footer:(ctx)=>pw.Container(alignment:pw.Alignment.center,padding:const pw.EdgeInsets.only(top:8),child:pw.Text('حساباتي   •   صفحة ${ctx.pageNumber} من ${ctx.pagesCount}',textDirection:pw.TextDirection.rtl,style:pw.TextStyle(font:font,fontSize:8,color:PdfColors.grey600))),
       build:(ctx)=>[
         pw.SizedBox(height:12),
-        pw.TableHelper.fromTextArray(
-          headers:headers,data:rows,
+        if(pdfRows.isEmpty)pw.Container(
+          width:double.infinity,padding:const pw.EdgeInsets.all(22),
+          decoration:pw.BoxDecoration(color:PdfColor.fromHex('#F8FAFC'),border:pw.Border.all(color:PdfColor.fromHex('#E5E7EB'))),
+          child:pw.Text('لا توجد بيانات ضمن هذا التقرير.',textDirection:pw.TextDirection.rtl,textAlign:pw.TextAlign.center,style:pw.TextStyle(font:bold,fontSize:12))
+        ) else pw.TableHelper.fromTextArray(
+          headers:pdfHeaders,data:pdfRows,
           headerStyle:pw.TextStyle(font:bold,color:PdfColors.white,fontSize:8.5),
           headerDecoration:pw.BoxDecoration(color:PdfColor.fromHex('#12224B')),
-          cellStyle:pw.TextStyle(font:font,fontSize:8),
+          cellStyle:pw.TextStyle(font:font,fontSize:8.2,color:PdfColor.fromHex('#1F2937')),
           cellAlignment:pw.Alignment.centerRight,
-          oddRowDecoration:pw.BoxDecoration(color:PdfColor.fromHex('#F5F7FB')),
+          oddRowDecoration:pw.BoxDecoration(color:PdfColor.fromHex('#F7F9FC')),
+          border:pw.TableBorder.all(color:PdfColor.fromHex('#D9E0EA'),width:.45),
           cellPadding:const pw.EdgeInsets.symmetric(horizontal:5,vertical:6),
-        )
+        ),
+        pw.SizedBox(height:10),
+        pw.Align(alignment:pw.Alignment.centerRight,child:pw.Text('عدد السجلات: ${rows.length}',textDirection:pw.TextDirection.rtl,style:pw.TextStyle(font:font,fontSize:8,color:PdfColors.grey700)))
       ]
     ));
     await Printing.sharePdf(bytes:await doc.save(),filename:'hesabati_${kind.replaceAll(' ','_')}.pdf');
@@ -83,7 +104,7 @@ class _HesabatiAppState extends State<HesabatiApp>{
     });
   }
 }
-enum Section { dashboard,sales,purchases,contacts,inventory,pos,accounting,cash,expenses,reports,settings }
+enum Section { dashboard,sales,purchases,contacts,inventory,accounting,cash,expenses,reports,settings }
 
 class HomeShell extends StatefulWidget{
   final HesabatiStore store; const HomeShell({super.key,required this.store});
@@ -95,21 +116,21 @@ class _HomeShellState extends State<HomeShell>{
   static const navy=Color(0xFF0B163F),blue=Color(0xFF2563EB),muted=Color(0xFF7A849A);
   final labels={
     Section.dashboard:'الرئيسية',Section.sales:'المبيعات',Section.purchases:'المشتريات',Section.contacts:'العملاء والموردون',
-    Section.inventory:'المنتجات والمخزون',Section.pos:'نقطة البيع',Section.accounting:'المحاسبة',Section.cash:'الخزائن والبنوك',
+    Section.inventory:'المنتجات والمخزون',Section.accounting:'المحاسبة',Section.cash:'الخزائن والبنوك',
     Section.expenses:'المصروفات',Section.reports:'التقارير',Section.settings:'الإعدادات'
   };
   final icons={
     Section.dashboard:Icons.space_dashboard_rounded,Section.sales:Icons.receipt_long_rounded,Section.purchases:Icons.local_shipping_rounded,Section.contacts:Icons.people_alt_rounded,
-    Section.inventory:Icons.inventory_2_rounded,Section.pos:Icons.point_of_sale_rounded,Section.accounting:Icons.account_balance_wallet_rounded,Section.cash:Icons.account_balance_rounded,
+    Section.inventory:Icons.inventory_2_rounded,Section.accounting:Icons.account_balance_wallet_rounded,Section.cash:Icons.account_balance_rounded,
     Section.expenses:Icons.payments_rounded,Section.reports:Icons.analytics_rounded,Section.settings:Icons.settings_rounded
   };
-  int primaryIndex(){if(section==Section.dashboard)return 0;if(section==Section.sales)return 1;if(section==Section.pos)return 2;if(section==Section.reports)return 3;return 4;}
+  int primaryIndex(){if(section==Section.dashboard)return 0;if(section==Section.sales)return 1;if(section==Section.reports)return 2;return 3;}
   @override Widget build(BuildContext context){
     final s=widget.store;
     final body=switch(section){
       Section.dashboard=>DashboardScreen(store:s,onGo:(x)=>setState(()=>section=x)),
       Section.sales=>SalesScreen(store:s),Section.purchases=>PurchasesScreen(store:s),Section.contacts=>ContactsScreen(store:s),
-      Section.inventory=>InventoryScreen(store:s),Section.pos=>PosScreen(store:s),Section.accounting=>AccountingScreen(store:s),
+      Section.inventory=>InventoryScreen(store:s),Section.accounting=>AccountingScreen(store:s),
       Section.cash=>CashScreen(store:s),Section.expenses=>ExpensesScreen(store:s),Section.reports=>ReportsScreen(store:s),Section.settings=>SettingsScreen(store:s),
     };
     return Directionality(textDirection:TextDirection.rtl,child:Scaffold(
@@ -154,12 +175,11 @@ class _HomeShellState extends State<HomeShell>{
       bottomNavigationBar:NavigationBar(
         selectedIndex:primaryIndex(),
         onDestinationSelected:(i){
-          if(i==0)setState(()=>section=Section.dashboard);if(i==1)setState(()=>section=Section.sales);if(i==2)setState(()=>section=Section.pos);if(i==3)setState(()=>section=Section.reports);if(i==4)scaffoldKey.currentState?.openDrawer();
+          if(i==0)setState(()=>section=Section.dashboard);if(i==1)setState(()=>section=Section.sales);if(i==2)setState(()=>section=Section.reports);if(i==3)scaffoldKey.currentState?.openDrawer();
         },
         destinations:const [
           NavigationDestination(icon:Icon(Icons.space_dashboard_outlined),selectedIcon:Icon(Icons.space_dashboard_rounded),label:'الرئيسية'),
           NavigationDestination(icon:Icon(Icons.receipt_long_outlined),selectedIcon:Icon(Icons.receipt_long_rounded),label:'المبيعات'),
-          NavigationDestination(icon:Icon(Icons.point_of_sale_outlined),selectedIcon:Icon(Icons.point_of_sale_rounded),label:'POS'),
           NavigationDestination(icon:Icon(Icons.analytics_outlined),selectedIcon:Icon(Icons.analytics_rounded),label:'التقارير'),
           NavigationDestination(icon:Icon(Icons.apps_rounded),label:'المزيد')
         ]

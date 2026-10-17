@@ -29,10 +29,11 @@
     if(!newBalance.isFinite)return false;
     final linked=contacts.where((c)=>c.name==other && ((receipt && c.type=='عميل') || (!receipt && c.type=='مورد'))).toList();
     if(linked.length>1 || (linked.isNotEmpty && (!linked.first.balance.isFinite || linked.first.balance+0.001<amount)))return false;
+    final ledgerAccount=linked.isEmpty?other:(receipt?'العملاء':'الموردون');
     final ref=next(receipt?'RCV':'PAY');
     addJournal(ref,receipt?'سند قبض: $note':'سند صرف: $note',[
-      if(receipt)JournalLine(a.name,debit:amount) else JournalLine(other,debit:amount),
-      if(receipt)JournalLine(other,credit:amount) else JournalLine(a.name,credit:amount),
+      if(receipt)JournalLine(a.name,debit:amount) else JournalLine(ledgerAccount,debit:amount),
+      if(receipt)JournalLine(ledgerAccount,credit:amount) else JournalLine(a.name,credit:amount),
     ],silent:true);
     a.balance=newBalance;
     if(linked.isNotEmpty)linked.first.balance=(linked.first.balance-amount).clamp(0,double.infinity).toDouble();

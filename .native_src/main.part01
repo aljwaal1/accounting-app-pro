@@ -113,7 +113,7 @@
   }
 
   bool receiveSale(SaleDoc sale,double amount,String accountId){
-    final a=cash(accountId); if(a==null || amount<=0 || amount>sale.due+0.001)return false;
+    final a=cash(accountId); if(a==null || !amount.isFinite || amount<=0 || amount>sale.due+0.001)return false;
     sale.paid+=amount; sale.status=sale.due<=0.001?'مدفوعة':'جزئي'; a.balance+=amount;
     final c=contact(sale.customerId); if(c!=null)c.balance=(c.balance-amount).clamp(0,double.infinity).toDouble();
     addJournal(sale.id,'تحصيل من عميل',[JournalLine(a.name,debit:amount),JournalLine('العملاء',credit:amount)],silent:true);
@@ -151,5 +151,5 @@
   }
 
   bool payPurchase(PurchaseDoc pur,double amount,String accountId){
-    final a=cash(accountId); if(a==null || amount<=0 || amount>pur.due+0.001 || a.balance<amount)return false;
+    final a=cash(accountId); if(a==null || !amount.isFinite || amount<=0 || amount>pur.due+0.001 || a.balance<amount)return false;
     pur.paid+=amount; pur.status=pur.due<=0.001?'مدفوعة

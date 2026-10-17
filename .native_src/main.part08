@@ -35,7 +35,7 @@ void voucherDialog(BuildContext context,HesabatiStore store,bool receipt){
     title:Text(receipt?'سند قبض':'سند صرف'),
     content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
       DropdownButtonFormField<String>(value:aid,decoration:const InputDecoration(labelText:'الحساب النقدي / البنكي'),items:store.cashAccounts.map((a)=>DropdownMenuItem(value:a.id,child:Text(a.name))).toList(),onChanged:(v)=>setState(()=>aid=v??aid)),
-      const SizedBox(height:8),TextField(controller:other,decoration:const InputDecoration(labelText:'الحساب المقابل',helperText:'اكتب اسم العميل للقبض أو المورد للصرف كما هو مسجل لربط الرصيد')),
+      const SizedBox(height:8),TextField(controller:other,decoration:InputDecoration(labelText:'الحساب المقابل',helperText:'اختر عميلًا أو موردًا بالمعرّف، أو اكتب حسابًا عامًا',suffixIcon:PopupMenuButton<String>(icon:const Icon(Icons.people),tooltip:'اختيار عميل أو مورد',onSelected:(id)=>setState(()=>other.text=id),itemBuilder:(ctx)=>store.contacts.where((c)=>c.type==(receipt?'عميل':'مورد')).map((c)=>PopupMenuItem(value:c.id,child:Text('${c.name} (${c.id})'))).toList()))),
       const SizedBox(height:8),TextField(controller:note,decoration:const InputDecoration(labelText:'البيان')),
       const SizedBox(height:8),TextField(controller:amount,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ')),
     ])),

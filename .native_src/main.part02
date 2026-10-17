@@ -38,7 +38,8 @@
   }
 
   void addCashAccount(String name,String type,double opening){
-    final a=CashAccount(id:next('A'),name:name,type:type,balance:opening);cashAccounts.add(a);
+    if(name.trim().isEmpty || !opening.isFinite || opening<0 || cashAccounts.any((a)=>a.name==name.trim()))return;
+    final a=CashAccount(id:next('A'),name:name.trim(),type:type,balance:opening);cashAccounts.add(a);
     if(opening>0)addJournal('OPEN','رصيد افتتاحي $name',[JournalLine(name,debit:opening),JournalLine('حقوق الملكية',credit:opening)],silent:true);
     save();
   }

@@ -14,7 +14,7 @@
   }
 
   bool transfer(String fromId,String toId,double amount){
-    final f=cash(fromId),t=cash(toId); if(f==null||t==null||f.id==t.id||amount<=0||f.balance<amount)return false;
+    final f=cash(fromId),t=cash(toId); if(f==null||t==null||f.id==t.id||!amount.isFinite||amount<=0||f.balance<amount)return false;
     f.balance-=amount;t.balance+=amount;
     addJournal(next('TR'),'تحويل داخلي',[JournalLine(t.name,debit:amount),JournalLine(f.name,credit:amount)],silent:true);
     save(); return true;

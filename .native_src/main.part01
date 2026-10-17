@@ -98,13 +98,16 @@
     final customer=contact(customerId);
     final account=cash(accountId);
     if(actualPaid>0 && account==null)return false;
+    final cost=lines.fold<double>(0,(s,l)=>s+l.qty*l.cost);
+    if(!cost.isFinite || !requested.entries.every((e)=>(product(e.key)!.stock-e.value).isFinite))return false;
+    if(account!=null && !(account.balance+actualPaid).isFinite)return false;
+    if(customer!=null && !(customer.balance+total-actualPaid).isFinite)return false;
     for(final l in lines){product(l.productId)!.stock-=l.qty;}
     if(customer!=null) customer.balance += total-actualPaid;
     if(account!=null) account.balance += actualPaid;
     final id=next('INV');
     sales.insert(0,SaleDoc(id:id,customerId:customerId,customerName:customer?.name??'نقدي',accountId:accountId,date:DateTime.now(),lines:lines,discount:discount,feeRate:feeRate,total:total,paid:actualPaid,status:actualPaid>=total?'مدفوعة':actualPaid>0?'جزئي':'غير مدفوعة'));
     final due=total-actualPaid;
-    final cost=lines.fold<double>(0,(s,l)=>s+l.qty*l.cost);
     final j=<JournalLine>[];
     if(actualPaid>0)j.add(JournalLine(account?.name??'النقدية',debit:actualPaid));
     if(due>0)j.add(JournalLine('العملاء',debit:due));

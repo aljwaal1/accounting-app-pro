@@ -20,6 +20,23 @@
     save(); return true;
   }
 
+  bool addVoucher({required bool receipt,required String cashId,required String counterAccount,required String note,required double amount}){
+    final a=cash(cashId);
+    final other=counterAccount.trim();
+    if(a==null || other.isEmpty || other==a.name || !amount.isFinite || amount<=0 ||
+        !a.balance.isFinite || (!receipt && a.balance<amount))return false;
+    final newBalance=a.balance+(receipt?amount:-amount);
+    if(!newBalance.isFinite)return false;
+    final ref=next(receipt?'RCV':'PAY');
+    addJournal(ref,receipt?'سند قبض: $note':'سند صرف: $note',[
+      if(receipt)JournalLine(a.name,debit:amount) else JournalLine(other,debit:amount),
+      if(receipt)JournalLine(other,credit:amount) else JournalLine(a.name,credit:amount),
+    ],silent:true);
+    a.balance=newBalance;
+    save();
+    return true;
+  }
+
   void addCashAccount(String name,String type,double opening){
     final a=CashAccount(id:next('A'),name:name,type:type,balance:opening);cashAccounts.add(a);
     if(opening>0)addJournal('OPEN','رصيد افتتاحي $name',[JournalLine(name,debit:opening),JournalLine('حقوق الملكية',credit:opening)],silent:true);

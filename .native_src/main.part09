@@ -27,6 +27,7 @@ class ReportsScreen extends StatelessWidget{
         const SizedBox(height:8),OutlinedButton.icon(style:OutlinedButton.styleFrom(minimumSize:const Size.fromHeight(48)),onPressed:store.exportBackup,icon:const Icon(Icons.backup),label:const Text('تنزيل نسخة احتياطية JSON'))
       ]))),
       const SizedBox(height:12),
+      Card(child:ListTile(leading:const Icon(Icons.account_balance_wallet),title:const Text('كشف حساب تفصيلي'),subtitle:const Text('الرصيد الافتتاحي والحركات والرصيد الختامي'),onTap:()=>accountStatementDialog(context,store))),
       ...reports.map((r)=>Card(child:ListTile(leading:CircleAvatar(child:Icon(r.$3)),title:Text(r.$1),subtitle:Text(r.$2),trailing:const Icon(Icons.picture_as_pdf,color:Colors.red),onTap:()=>store.exportPdfReport(r.$1))))
     ]);
   }
@@ -49,3 +50,19 @@ class _SettingsScreenState extends State<SettingsScreen>{
 }
 
 class EmptyBox extends StatelessWidget{final String text;const EmptyBox(this.text,{super.key});@override Widget build(BuildContext context)=>Card(child:Padding(padding:const EdgeInsets.all(28),child:Center(child:Column(children:[Icon(Icons.inbox_outlined,size:42,color:Colors.grey.shade400),const SizedBox(height:8),Text(text,style:TextStyle(color:Colors.grey.shade600))]))));}
+
+void accountStatementDialog(BuildContext context,HesabatiStore store){
+  final accounts=store.journals.expand((j)=>j.lines.map((l)=>l.account)).toSet().toList()..sort();
+  if(accounts.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('لا توجد حسابات مسجلة')));return;}
+  String selected=accounts.first;
+  showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setLocal){
+    final statement=store.accountStatement(selected);
+    final summary=statement.first;
+    return AlertDialog(title:const Text('كشف حساب'),content:SizedBox(width:520,height:420,child:Column(children:[
+      DropdownButtonFormField<String>(initialValue:selected,isExpanded:true,decoration:const InputDecoration(labelText:'الحساب'),items:accounts.map((a)=>DropdownMenuItem(value:a,child:Text(a))).toList(),onChanged:(v){if(v!=null)setLocal(()=>selected=v);}),
+      const SizedBox(height:12),Text('الرصيد الافتتاحي: ${money(summary['openingBalance'] as double)}'),
+      Text('الرصيد الختامي: ${money(summary['closingBalance'] as double)}'),const Divider(),
+      Expanded(child:ListView(children:statement.skip(1).map((row)=>ListTile(dense:true,title:Text('${row['note']}'),subtitle:Text('${row['ref']} • ${dateText(row['date'] as DateTime)}'),trailing:Text('مدين ${money(row['debit'] as double)} / دائن ${money(row['credit'] as double)}\nرصيد ${money(row['balance'] as double)}',textAlign:TextAlign.end))).toList()))
+    ])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إغلاق'))]);
+  }));
+}

@@ -63,6 +63,6 @@ void accountStatementDialog(BuildContext context,HesabatiStore store){
       const SizedBox(height:12),Text('الرصيد الافتتاحي: ${money(summary['openingBalance'] as double)}'),
       Text('الرصيد الختامي: ${money(summary['closingBalance'] as double)}'),const Divider(),
       Expanded(child:ListView(children:statement.skip(1).map((row)=>ListTile(dense:true,title:Text('${row['note']}'),subtitle:Text('${row['ref']} • ${dateText(row['date'] as DateTime)}'),trailing:Text('مدين ${money(row['debit'] as double)} / دائن ${money(row['credit'] as double)}\nرصيد ${money(row['balance'] as double)}',textAlign:TextAlign.end))).toList()))
-    ])),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إغلاق'))]);
+    ])),actions:[TextButton.icon(onPressed:()=>store.exportPdfReport('كشف حساب|$selected'),icon:const Icon(Icons.picture_as_pdf),label:const Text('تصدير PDF')),TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إغلاق'))]);
   }));
 }

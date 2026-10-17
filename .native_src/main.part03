@@ -64,7 +64,7 @@
         pw.Align(alignment:pw.Alignment.centerRight,child:pw.Text('عدد السجلات: ${rows.length}',textDirection:pw.TextDirection.rtl,style:pw.TextStyle(font:font,fontSize:8,color:PdfColors.grey700)))
       ]
     ));
-    await Printing.sharePdf(bytes:await doc.save(),filename:'hesabati_${kind.replaceAll(' ','_')}.pdf');
+    await Printing.sharePdf(bytes:await doc.save(),filename:'hesabati_${kind.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'),'_')}.pdf');
   }
 }
 

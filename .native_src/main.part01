@@ -73,6 +73,7 @@
     save();
   }
   void addProduct(String name,String sku,String category,double stock,double cost,double price,double minStock){
+    if(name.trim().isEmpty || !stock.isFinite || stock<0 || !cost.isFinite || cost<0 || !price.isFinite || price<0 || !minStock.isFinite || minStock<0 || !(stock*cost).isFinite)return;
     products.add(Product(id:next('P'),name:name,sku:sku,category:category,stock:stock,cost:cost,price:price,minStock:minStock));
     if(stock>0 && cost>0){
       addJournal('OPEN','رصيد افتتاحي للمخزون',[JournalLine('المخزون',debit:stock*cost),JournalLine('حقوق الملكية',credit:stock*cost)],silent:true);

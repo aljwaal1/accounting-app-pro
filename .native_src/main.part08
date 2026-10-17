@@ -23,7 +23,7 @@ class CashScreen extends StatelessWidget{
   final HesabatiStore store;const CashScreen({super.key,required this.store});
   @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(14),children:[
     Row(children:[Expanded(child:FilledButton.icon(onPressed:()=>cashAccountDialog(context,store),icon:const Icon(Icons.add),label:const Text('حساب نقدي / بنكي'))),const SizedBox(width:8),FilledButton.tonalIcon(onPressed:()=>transferDialog(context,store),icon:const Icon(Icons.swap_horiz),label:const Text('تحويل'))]),
-    const SizedBox(height:8),Row(children:[Expanded(child:FilledButton.tonal(onPressed:()=>voucherDialog(context,store,true),child:const Text('سند قبض'))),const SizedBox(width:8),Expanded(child:FilledButton.tonal(onPressed:()=>voucherDialog(context,store,false),child:const Text('سند صرف'))]),
+    const SizedBox(height:8),Row(children:[Expanded(child:FilledButton.tonal(onPressed:()=>voucherDialog(context,store,true),child:const Text('سند قبض'))),const SizedBox(width:8),Expanded(child:FilledButton.tonal(onPressed:()=>voucherDialog(context,store,false),child:const Text('سند صرف')))]),
     const SizedBox(height:12),...store.cashAccounts.map((a)=>Card(child:ListTile(leading:CircleAvatar(child:Icon(a.type=='بنك'?Icons.account_balance:Icons.payments)),title:Text(a.name),subtitle:Text(a.type),trailing:Text('${money(a.balance)} ${store.currency}',style:const TextStyle(fontWeight:FontWeight.w900,fontSize:16)))))
   ]);
 }

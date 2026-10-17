@@ -21,7 +21,7 @@
     if(raw!=null){
       try{ _fromJson(jsonDecode(raw)); }catch(_){}
     }
-    if(contacts.isEmpty && products.isEmpty && cashAccounts.isEmpty) seed();
+    if(contacts.isEmpty && products.isEmpty && cashAccounts.isEmpty){seed();await save();}
     ready=true;
     notifyListeners();
   }
@@ -42,6 +42,13 @@
       CashAccount(id:'A1',name:'الخزينة الرئيسية',type:'خزينة',balance:24610),
       CashAccount(id:'A2',name:'البنك الرئيسي',type:'بنك',balance:83760),
     ];
+    final inventory=products.fold<double>(0,(sum,p)=>sum+p.stock*p.cost);
+    final cashOpening=cashAccounts.fold<double>(0,(sum,a)=>sum+a.balance);
+    addJournal('OPEN','الأرصدة الافتتاحية التجريبية',[
+      JournalLine('المخزون',debit:inventory),
+      ...cashAccounts.map((a)=>JournalLine(a.name,debit:a.balance)),
+      JournalLine('حقوق الملكية',credit:inventory+cashOpening),
+    ],silent:true);
   }
 
   String next(String p)=>'$p-${DateTime.now().year}-${++_seq}';

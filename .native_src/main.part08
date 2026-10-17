@@ -23,8 +23,25 @@ class CashScreen extends StatelessWidget{
   final HesabatiStore store;const CashScreen({super.key,required this.store});
   @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(14),children:[
     Row(children:[Expanded(child:FilledButton.icon(onPressed:()=>cashAccountDialog(context,store),icon:const Icon(Icons.add),label:const Text('حساب نقدي / بنكي'))),const SizedBox(width:8),FilledButton.tonalIcon(onPressed:()=>transferDialog(context,store),icon:const Icon(Icons.swap_horiz),label:const Text('تحويل'))]),
+    const SizedBox(height:8),Row(children:[Expanded(child:FilledButton.tonal(onPressed:()=>voucherDialog(context,store,true),child:const Text('سند قبض'))),const SizedBox(width:8),Expanded(child:FilledButton.tonal(onPressed:()=>voucherDialog(context,store,false),child:const Text('سند صرف'))]),
     const SizedBox(height:12),...store.cashAccounts.map((a)=>Card(child:ListTile(leading:CircleAvatar(child:Icon(a.type=='بنك'?Icons.account_balance:Icons.payments)),title:Text(a.name),subtitle:Text(a.type),trailing:Text('${money(a.balance)} ${store.currency}',style:const TextStyle(fontWeight:FontWeight.w900,fontSize:16)))))
   ]);
+}
+void voucherDialog(BuildContext context,HesabatiStore store,bool receipt){
+  if(store.cashAccounts.isEmpty)return;
+  String aid=store.cashAccounts.first.id;
+  final other=TextEditingController(),note=TextEditingController(),amount=TextEditingController();
+  showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setState)=>AlertDialog(
+    title:Text(receipt?'سند قبض':'سند صرف'),
+    content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+      DropdownButtonFormField<String>(value:aid,decoration:const InputDecoration(labelText:'الحساب النقدي / البنكي'),items:store.cashAccounts.map((a)=>DropdownMenuItem(value:a.id,child:Text(a.name))).toList(),onChanged:(v)=>setState(()=>aid=v??aid)),
+      const SizedBox(height:8),TextField(controller:other,decoration:const InputDecoration(labelText:'الحساب المقابل')),
+      const SizedBox(height:8),TextField(controller:note,decoration:const InputDecoration(labelText:'البيان')),
+      const SizedBox(height:8),TextField(controller:amount,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ')),
+    ])),
+    actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),
+      FilledButton(onPressed:(){if(store.addVoucher(receipt:receipt,cashId:aid,counterAccount:other.text,note:note.text,amount:dval(amount.text)))Navigator.pop(ctx);},child:const Text('حفظ السند'))],
+  )));
 }
 void cashAccountDialog(BuildContext context,HesabatiStore store){
   final n=TextEditingController(),o=TextEditingController(text:'0');String type='خزينة';

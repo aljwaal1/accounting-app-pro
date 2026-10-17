@@ -58,6 +58,24 @@
     if(!silent)save();
   }
 
+  List<Map<String,dynamic>> accountStatement(String account,{DateTime? from,DateTime? to}){
+    final entries=<Map<String,dynamic>>[];
+    double opening=0,running=0;
+    final ordered=[...journals]..sort((a,b)=>a.date.compareTo(b.date));
+    for(final entry in ordered){
+      for(final line in entry.lines){
+        if(line.account!=account)continue;
+        final movement=line.debit-line.credit;
+        if(from!=null && entry.date.isBefore(from)){opening+=movement;continue;}
+        if(to!=null && entry.date.isAfter(to))continue;
+        entries.add({'date':entry.date,'ref':entry.ref,'note':entry.note,'debit':line.debit,'credit':line.credit,'movement':movement});
+      }
+    }
+    running=opening;
+    for(final row in entries){running+=(row['movement'] as double);row['balance']=running;}
+    return [{'openingBalance':opening,'closingBalance':running},...entries];
+  }
+
   Future<void> save() async {
     final p=await SharedPreferences.getInstance();
     await p.setString(key,jsonEncode(toJson()));

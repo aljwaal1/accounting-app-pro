@@ -21,7 +21,7 @@
     if(raw!=null){
       try{ _fromJson(jsonDecode(raw)); }catch(_){}
     }
-    if(contacts.isEmpty && products.isEmpty && cashAccounts.isEmpty){seed();await save();}
+    if(contacts.isEmpty && products.isEmpty && cashAccounts.isEmpty){seed();ready=true;notifyListeners();await save();}
     ready=true;
     notifyListeners();
   }

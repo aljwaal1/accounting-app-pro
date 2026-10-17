@@ -75,7 +75,13 @@
 
   bool addSale({required String customerId,required List<DocLine> lines,required double discount,required double feeRate,required double paid,required String accountId}){
     if(lines.isEmpty)return false;
-    for(final l in lines){final p=product(l.productId);if(p==null || p.stock<l.qty)return false;}
+    final requested=<String,double>{};
+    for(final l in lines){
+      if(!l.qty.isFinite || l.qty<=0 || !l.price.isFinite || l.price<0 || !l.cost.isFinite || l.cost<0)return false;
+      requested[l.productId]=(requested[l.productId]??0)+l.qty;
+    }
+    for(final entry in requested.entries){final p=product(entry.key);if(p==null || !entry.value.isFinite || p.stock<entry.value)return false;}
+    if(!discount.isFinite || discount<0 || !feeRate.isFinite || feeRate<0 || !paid.isFinite || paid<0)return false;
     final subtotal=lines.fold<double>(0,(s,l)=>s+l.total);
     final base=(subtotal-discount).clamp(0,double.infinity).toDouble();
     final total=base+(base*feeRate/100);

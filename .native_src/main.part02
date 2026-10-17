@@ -27,7 +27,7 @@
         !a.balance.isFinite || (!receipt && a.balance<amount))return false;
     final newBalance=a.balance+(receipt?amount:-amount);
     if(!newBalance.isFinite)return false;
-    final linked=contacts.where((c)=>c.name==other && ((receipt && c.type=='عميل') || (!receipt && c.type=='مورد'))).toList();
+    final linked=contacts.where((c)=>(c.id==other || c.name==other) && ((receipt && c.type=='عميل') || (!receipt && c.type=='مورد'))).toList();
     if(linked.length>1 || (linked.isNotEmpty && (!linked.first.balance.isFinite || linked.first.balance+0.001<amount)))return false;
     final ledgerAccount=linked.isEmpty?other:(receipt?'العملاء':'الموردون');
     final ref=next(receipt?'RCV':'PAY');

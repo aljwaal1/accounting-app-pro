@@ -69,7 +69,8 @@
   CashAccount? cash(String id){for(final x in cashAccounts){if(x.id==id)return x;}return null;}
 
   void addContact(String name,String type,String phone,String note){
-    contacts.add(Contact(id:next(type=='عميل'?'C':'S'),name:name,type:type,phone:phone,note:note));
+    if(name.trim().isEmpty || (type!='عميل' && type!='مورد') || contacts.any((c)=>c.type==type && c.name==name.trim()))return;
+    contacts.add(Contact(id:next(type=='عميل'?'C':'S'),name:name.trim(),type:type,phone:phone,note:note));
     save();
   }
   void addProduct(String name,String sku,String category,double stock,double cost,double price,double minStock){

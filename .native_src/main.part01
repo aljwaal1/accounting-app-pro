@@ -114,8 +114,12 @@
   }
 
   bool addPurchase({required String supplierId,required List<DocLine> lines,required double paid,required String accountId}){
-    if(lines.isEmpty)return false;
+    if(lines.isEmpty || !paid.isFinite || paid<0)return false;
+    for(final l in lines){
+      if(product(l.productId)==null || !l.qty.isFinite || l.qty<=0 || !l.price.isFinite || l.price<0)return false;
+    }
     final total=lines.fold<double>(0,(s,l)=>s+l.total);
+    if(!total.isFinite || total<=0)return false;
     final actualPaid=paid.clamp(0,total).toDouble();
     final a=cash(accountId);
     if(actualPaid>0 && (a==null || a.balance<actualPaid))return false;

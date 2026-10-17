@@ -92,6 +92,7 @@
     final subtotal=lines.fold<double>(0,(s,l)=>s+l.total);
     final base=(subtotal-discount).clamp(0,double.infinity).toDouble();
     final total=base+(base*feeRate/100);
+    if(!subtotal.isFinite || !base.isFinite || !total.isFinite || total<=0)return false;
     final actualPaid=paid.clamp(0,total).toDouble();
     final customer=contact(customerId);
     final account=cash(accountId);

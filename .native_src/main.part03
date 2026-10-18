@@ -99,7 +99,7 @@ class _HesabatiAppState extends State<HesabatiApp>{
             labelTextStyle:WidgetStateProperty.resolveWith((states)=>TextStyle(fontWeight:states.contains(WidgetState.selected)?FontWeight.w800:FontWeight.w600,fontSize:11,color:states.contains(WidgetState.selected)?blue:const Color(0xFF7A849A)))
           )
         ),
-        home:store.ready?HomeShell(store:store):const Scaffold(body:Center(child:CircularProgressIndicator())),
+        home:store.startupError!=null?Scaffold(body:Center(child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[const Icon(Icons.error_outline,size:48,color:Colors.red),const SizedBox(height:12),const Text('تعذر بدء تشغيل حساباتي',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),const SizedBox(height:10),Text(store.startupError!,textAlign:TextAlign.center),const SizedBox(height:12),const Text('لم يتم حذف بياناتك. أرسل صورة هذه الرسالة للدعم.',textAlign:TextAlign.center)])))):store.ready?HomeShell(store:store):const Scaffold(body:Center(child:CircularProgressIndicator())),
       );
     });
   }

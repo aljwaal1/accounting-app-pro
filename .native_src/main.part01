@@ -15,15 +15,30 @@
   bool ready=false;
   int _seq=1000;
 
+  String? startupError;
   Future<void> init() async {
-    final p=await SharedPreferences.getInstance();
-    final raw=p.getString(key);
-    if(raw!=null){
-      try{ _fromJson(jsonDecode(raw)); }catch(_){}
+    try {
+      final p=await SharedPreferences.getInstance().timeout(const Duration(seconds:12));
+      final raw=p.getString(key);
+      if(raw!=null && raw.isNotEmpty){
+        try {
+          _fromJson(Map<String,dynamic>.from(jsonDecode(raw) as Map));
+        } catch (_) {
+          startupError='تعذر قراءة البيانات المحفوظة. لم يتم حذفها أو استبدالها.';
+          return;
+        }
+      } else {
+        seed();
+        ready=true;
+        notifyListeners();
+        await save().timeout(const Duration(seconds:12));
+      }
+    } catch (_) {
+      startupError='تعذر تهيئة التخزين المحلي. تحقق من مساحة الهاتف وأعد فتح التطبيق.';
+    } finally {
+      ready=true;
+      notifyListeners();
     }
-    if(contacts.isEmpty && products.isEmpty && cashAccounts.isEmpty){seed();ready=true;notifyListeners();await save();}
-    ready=true;
-    notifyListeners();
   }
 
   void seed(){

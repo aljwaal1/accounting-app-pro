@@ -75,7 +75,7 @@ class HesabatiApp extends StatefulWidget {
 }
 class _HesabatiAppState extends State<HesabatiApp>{
   final store=HesabatiStore();
-  @override void initState(){super.initState();store.init();}
+  @override void initState(){super.initState();WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)store.init();});}
   @override Widget build(BuildContext context){
     return AnimatedBuilder(animation:store,builder:(context,_){
       const navy=Color(0xFF0B163F),blue=Color(0xFF2563EB),bg=Color(0xFFF5F7FC);

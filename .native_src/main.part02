@@ -82,6 +82,28 @@
     if(!silent)save();
   }
 
+  /// Double-entry integrity check based on the posted journal, not UI totals.
+  /// Returns Arabic diagnostics without changing or deleting financial data.
+  List<String> auditJournalIntegrity(){
+    final issues=<String>[];
+    for(final entry in journals){
+      var debit=0.0,credit=0.0;
+      if(entry.lines.length<2)issues.add('القيد ${entry.ref}: أقل من طرفين');
+      for(final line in entry.lines){
+        if(line.account.trim().isEmpty || !line.debit.isFinite || !line.credit.isFinite ||
+            line.debit<0 || line.credit<0 || (line.debit>0)==(line.credit>0)){
+          issues.add('القيد ${entry.ref}: سطر غير صالح');
+        }
+        debit+=line.debit;
+        credit+=line.credit;
+      }
+      if(!debit.isFinite || !credit.isFinite || (debit-credit).abs()>0.005){
+        issues.add('القيد ${entry.ref}: غير متوازن');
+      }
+    }
+    return issues;
+  }
+
   List<Map<String,dynamic>> accountStatement(String account,{DateTime? from,DateTime? to}){
     final entries=<Map<String,dynamic>>[];
     double opening=0,running=0;

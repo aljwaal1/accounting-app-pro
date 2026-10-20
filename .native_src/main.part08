@@ -14,9 +14,52 @@ y,required this.store});
 }
 void manualJournalDialog(BuildContext context,HesabatiStore store){
   final note=TextEditingController(),debitAcc=TextEditingController(),creditAcc=TextEditingController(),amount=TextEditingController();
-  showDialog(context:context,builder:(ctx)=>AlertDialog(title:const Text('قيد يومية يدوي'),content:Column(mainAxisSize:MainAxisSize.min,children:[
-    TextField(controller:note,decoration:const InputDecoration(labelText:'البيان')),const SizedBox(height:8),TextField(controller:debitAcc,decoration:const InputDecoration(labelText:'الحساب المدين')),const SizedBox(height:8),TextField(controller:creditAcc,decoration:const InputDecoration(labelText:'الحساب الدائن')),const SizedBox(height:8),TextField(controller:amount,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ'))
-  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){final a=dval(amount.text);if(a<=0||debitAcc.text.trim().isEmpty||creditAcc.text.trim().isEmpty)return;store.addJournal(store.next('MAN'),note.text.trim(),[JournalLine(debitAcc.text.trim(),debit:a),JournalLine(creditAcc.text.trim(),credit:a)]);Navigator.pop(ctx);},child:const Text('حفظ القيد'))]));
+  final accounts=<String>{
+    'الصندوق','البنك','العملاء','الموردون','المخزون','حقوق الملكية',
+    ...store.cashAccounts.map((a)=>a.name),
+    ...store.journals.expand((j)=>j.lines.map((l)=>l.account)),
+  }.toList()..sort();
+  showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setState){
+    final value=dval(amount.text);
+    final valid=value.isFinite && value>0 && debitAcc.text.trim().isNotEmpty &&
+        creditAcc.text.trim().isNotEmpty && debitAcc.text.trim()!=creditAcc.text.trim();
+    Widget accountField(TextEditingController controller,String label)=>Column(
+      crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        TextField(controller:controller,onChanged:(_)=>setState((){}),decoration:InputDecoration(labelText:label)),
+        if(accounts.isNotEmpty)SizedBox(height:44,child:ListView(scrollDirection:Axis.horizontal,children:accounts.map((name)=>
+          Padding(padding:const EdgeInsetsDirectional.only(end:5),child:ActionChip(label:Text(name),onPressed:(){
+            controller.text=name;setState((){});
+          }))).toList())),
+      ]);
+    return AlertDialog(
+      title:const Text('قيد يومية يدوي'),
+      content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        TextField(controller:note,decoration:const InputDecoration(labelText:'البيان')),
+        const SizedBox(height:10),
+        accountField(debitAcc,'الحساب المدين'),
+        const SizedBox(height:10),
+        accountField(creditAcc,'الحساب الدائن'),
+        const SizedBox(height:10),
+        TextField(controller:amount,keyboardType:const TextInputType.numberWithOptions(decimal:true),
+          onChanged:(_)=>setState((){}),decoration:const InputDecoration(labelText:'المبلغ')),
+        const SizedBox(height:10),
+        Text('إجمالي المدين: ${money(value)}   •   إجمالي الدائن: ${money(value)}',
+          style:const TextStyle(fontWeight:FontWeight.bold)),
+        if(debitAcc.text.isNotEmpty && debitAcc.text.trim()==creditAcc.text.trim())
+          const Text('يجب اختيار حسابين مختلفين',style:TextStyle(color:Colors.red)),
+      ])),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),
+        FilledButton(onPressed:valid?(){
+          try{
+            store.addJournal(store.next('MAN'),note.text.trim(),[
+              JournalLine(debitAcc.text.trim(),debit:value),
+              JournalLine(creditAcc.text.trim(),credit:value)]);
+            Navigator.pop(ctx);
+          }catch(e){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('تعذر حفظ القيد: $e')));}
+        }:null,child:const Text('حفظ القيد')),
+      ]);
+  }));
 }
 
 class CashScreen extends StatelessWidget{

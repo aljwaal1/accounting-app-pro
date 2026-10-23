@@ -17,7 +17,7 @@ void productDialog(BuildContext context,HesabatiStore store){
 }
 void stockAdjustDialog(BuildContext context,HesabatiStore store,Product p){
   final c=TextEditingController(text:money(p.stock));
-  showDialog(context:context,builder:(ctx)=>AlertDialog(title:Text('تسوية مخزون • ${p.name}'),content:TextField(controller:c,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الكمية الفعلية')),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){store.adjustStock(p,dval(c.text));Navigator.pop(ctx);},child:const Text('اعتماد التسوية'))]));
+  showDialog(context:context,builder:(ctx)=>AlertDialog(title:Text('تسوية مخزون • ${p.name}'),content:TextField(controller:c,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الكمية الفعلية')),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){final quantity=dval(c.text);if(!quantity.isFinite || quantity<0){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('الكمية الفعلية يجب أن تكون صفرًا أو أكثر')));return;}store.adjustStock(p,quantity);Navigator.pop(ctx);},child:const Text('اعتماد التسوية'))]));
 }
 
 class AccountingScreen extends StatelessWidget{

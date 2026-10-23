@@ -93,7 +93,7 @@ void cashAccountDialog(BuildContext context,HesabatiStore store){
   showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setState)=>AlertDialog(title:const Text('حساب جديد'),content:Column(mainAxisSize:MainAxisSize.min,children:[
     SegmentedButton<String>(segments:const [ButtonSegment(value:'خزينة',label:Text('خزينة')),ButtonSegment(value:'بنك',label:Text('بنك'))],selected:{type},onSelectionChanged:(v)=>setState(()=>type=v.first)),const SizedBox(height:8),
     TextField(controller:n,decoration:const InputDecoration(labelText:'اسم الحساب')),const SizedBox(height:8),TextField(controller:o,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الرصيد الافتتاحي'))
-  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(n.text.trim().isEmpty)return;store.addCashAccount(n.text.trim(),type,dval(o.text));Navigator.pop(ctx);},child:const Text('حفظ'))])));
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){final opening=dval(o.text);if(n.text.trim().isEmpty || !opening.isFinite || opening<0 || store.cashAccounts.any((a)=>a.name==n.text.trim())){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('أدخل اسمًا جديدًا ورصيدًا افتتاحيًا غير سالب')));return;}store.addCashAccount(n.text.trim(),type,opening);Navigator.pop(ctx);},child:const Text('حفظ'))])));
 }
 void transferDialog(BuildContext context,HesabatiStore store){
   if(store.cashAccounts.length<2)return;String f=store.cashAccounts[0].id,t=store.cashAccounts[1].id;final a=TextEditingController();

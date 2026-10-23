@@ -14,7 +14,7 @@ class _SaleFormState extends State<SaleForm>{
       const Text('الأصناف والخدمات',style:TextStyle(fontSize:16,fontWeight:FontWeight.bold)),const SizedBox(height:8),
       FilledButton.tonalIcon(onPressed:()=>addLineDialog(context,widget.store,lines,forPurchase:false,onDone:()=>setState((){})),icon:const Icon(Icons.add),label:const Text('إضافة صنف')),
       const SizedBox(height:10),
-      ...lines.asMap().entries.map((e)=>Card(child:ListTile(title:Text(e.value.name),subtitle:Text('${money(e.value.qty)} × ${money(e.value.price)}'),trailing:Row(mainAxisSize:MainAxisSize.min,children:[Text(money(e.value.total),style:const TextStyle(fontWeight:FontWeight.bold)),IconButton(onPressed:()=>setState(()=>lines.removeAt(e.key)),icon:const Icon(Icons.close))])))),
+      ...lines.asMap().entries.map((e)=>Card(child:ListTile(title:Text(e.value.name),subtitle:Text('${money(e.value.qty)} × ${money(e.value.price)}\nالإجمالي: ${money(e.value.total)} ${widget.store.currency}'),trailing:IconButton(tooltip:'حذف الصنف',onPressed:()=>setState(()=>lines.removeAt(e.key)),icon:const Icon(Icons.delete_outline,color:Colors.red)),isThreeLine:true,contentPadding:const EdgeInsets.symmetric(horizontal:12,vertical:5)))),
       const SizedBox(height:16),
       const Text('الخصومات والرسوم',style:TextStyle(fontSize:16,fontWeight:FontWeight.bold)),const SizedBox(height:8),
       Row(children:[Expanded(child:TextField(controller:discount,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الخصم'),onChanged:(_)=>setState((){}))),const SizedBox(width:8),Expanded(child:TextField(controller:fee,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'رسوم/ضريبة اختيارية %'),onChanged:(_)=>setState((){})))]),

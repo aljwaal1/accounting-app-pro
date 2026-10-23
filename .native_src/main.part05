@@ -28,7 +28,7 @@ class _SaleFormState extends State<SaleForm>{
       const SizedBox(height:16),
       Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[MetricRow('الإجمالي قبل الخصم',subtotal,widget.store.currency,Colors.black),MetricRow('الإجمالي النهائي',total,widget.store.currency,Colors.blue)]))),
       const SizedBox(height:16),
-      FilledButton.icon(onPressed:lines.isEmpty || dval(paid.text)>total || dval(paid.text)<0?null:(){
+      FilledButton.icon(onPressed:lines.isEmpty || dval(paid.text)>total || dval(paid.text)<0 || dval(discount.text)<0 || dval(discount.text)>subtotal || dval(fee.text)<0 || dval(fee.text)>100?null:(){
         final ok=widget.store.addSale(customerId:customerId,lines:List.from(lines),discount:dval(discount.text),feeRate:dval(fee.text),paid:dval(paid.text),accountId:accountId);
         if(ok)Navigator.pop(context);else ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تعذر حفظ الفاتورة. تحقق من المخزون والبيانات.')));
       },icon:const Icon(Icons.save),label:const Text('حفظ الفاتورة'))

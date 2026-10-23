@@ -23,7 +23,7 @@ void showPayDialog(BuildContext context,HesabatiStore store,PurchaseDoc pur){
   showDialog(context:context,builder:(ctx)=>AlertDialog(title:Text('سداد ${pur.id}'),content:Column(mainAxisSize:MainAxisSize.min,children:[
     Text('المتبقي: ${money(pur.due)} ${store.currency}'),const SizedBox(height:10),TextField(controller:a,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ')),
     const SizedBox(height:10),DropdownButtonFormField(value:aid,items:store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text('${x.name} • ${money(x.balance)}'))).toList(),onChanged:(v)=>aid=v??aid)
-  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(store.payPurchase(pur,dval(a.text),aid))Navigator.pop(ctx);},child:const Text('سداد'))]));
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){final value=dval(a.text);if(value<=0 || value>pur.due || value>(store.cash(aid)?.balance??0)){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تحقق من مبلغ السداد ورصيد الحساب')));return;}if(store.payPurchase(pur,value,aid)){Navigator.pop(ctx);}else{ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تعذر تسجيل السداد')));}},child:const Text('سداد'))]));
 }
 
 class ContactsScreen extends StatefulWidget{final HesabatiStore store;const ContactsScreen({super.key,required this.store});@override State<ContactsScreen> createState()=>_ContactsScreenState();}

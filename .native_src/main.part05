@@ -45,7 +45,7 @@ void addLineDialog(BuildContext context,HesabatiStore store,List<DocLine> target
     const SizedBox(height:10),TextField(controller:qty,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الكمية')),
     const SizedBox(height:10),TextField(controller:price,keyboardType:TextInputType.number,decoration:InputDecoration(labelText:forPurchase?'تكلفة الوحدة':'سعر الوحدة'))
   ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){
-    final p=current(),q=dval(qty.text),pr=dval(price.text);if(p==null||q<=0||pr<0)return;
+    final p=current(),q=dval(qty.text),pr=dval(price.text);if(p==null||!q.isFinite||!pr.isFinite||q<=0||pr<0||(!forPurchase && q>p.stock)){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تحقق من الصنف والكمية والمخزون والسعر')));return;}
     target.add(DocLine(productId:p.id,name:p.name,qty:q,price:pr,cost:p.cost));Navigator.pop(ctx);onDone();
   },child:const Text('إضافة'))])));
 }
@@ -55,7 +55,7 @@ void showReceiveDialog(BuildContext context,HesabatiStore store,SaleDoc sale){
   showDialog(context:context,builder:(ctx)=>AlertDialog(title:Text('تحصيل ${sale.id}'),content:Column(mainAxisSize:MainAxisSize.min,children:[
     Text('المتبقي: ${money(sale.due)} ${store.currency}'),const SizedBox(height:10),TextField(controller:a,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ')),
     const SizedBox(height:10),DropdownButtonFormField(value:aid,items:store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>aid=v??aid)
-  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(store.receiveSale(sale,dval(a.text),aid))Navigator.pop(ctx);},child:const Text('تحصيل'))]));
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){final value=dval(a.text);if(value<=0 || value>sale.due){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('مبلغ التحصيل يجب أن يكون ضمن المتبقي')));return;}if(store.receiveSale(sale,value,aid)){Navigator.pop(ctx);}else{ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تعذر تسجيل التحصيل')));}},child:const Text('تحصيل'))]));
 }
 
 class PurchasesScreen extends StatelessWidget{

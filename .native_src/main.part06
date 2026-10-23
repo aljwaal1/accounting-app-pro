@@ -42,7 +42,7 @@ void contactDialog(BuildContext context,HesabatiStore store){
   showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setState)=>AlertDialog(title:const Text('إضافة عميل / مورد'),content:Column(mainAxisSize:MainAxisSize.min,children:[
     SegmentedButton<String>(segments:const [ButtonSegment(value:'عميل',label:Text('عميل')),ButtonSegment(value:'مورد',label:Text('مورد'))],selected:{type},onSelectionChanged:(v)=>setState(()=>type=v.first)),
     const SizedBox(height:10),TextField(controller:name,decoration:const InputDecoration(labelText:'الاسم')),const SizedBox(height:10),TextField(controller:phone,decoration:const InputDecoration(labelText:'الهاتف')),const SizedBox(height:10),TextField(controller:note,decoration:const InputDecoration(labelText:'ملاحظات'))
-  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(name.text.trim().isEmpty)return;store.addContact(name.text.trim(),type,phone.text.trim(),note.text.trim());Navigator.pop(ctx);},child:const Text('حفظ'))])));
+  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){if(name.text.trim().isEmpty || store.contacts.any((c)=>c.name.trim().toLowerCase()==name.text.trim().toLowerCase() && c.type==type)){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('أدخل اسمًا غير فارغ وغير مكرر لنفس النوع')));return;}store.addContact(name.text.trim(),type,phone.text.trim(),note.text.trim());Navigator.pop(ctx);},child:const Text('حفظ'))])));
 }
 
 class InventoryScreen extends StatelessWidget{

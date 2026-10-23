@@ -80,10 +80,12 @@ void voucherDialog(BuildContext context,HesabatiStore store,bool receipt){
       DropdownButtonFormField<String>(value:aid,decoration:const InputDecoration(labelText:'الحساب النقدي / البنكي'),items:store.cashAccounts.map((a)=>DropdownMenuItem(value:a.id,child:Text(a.name))).toList(),onChanged:(v)=>setState(()=>aid=v??aid)),
       const SizedBox(height:8),TextField(controller:other,decoration:InputDecoration(labelText:'الحساب المقابل',helperText:'اختر عميلًا أو موردًا بالمعرّف، أو اكتب حسابًا عامًا',suffixIcon:PopupMenuButton<String>(icon:const Icon(Icons.people),tooltip:'اختيار عميل أو مورد',onSelected:(id)=>setState(()=>other.text=id),itemBuilder:(ctx)=>store.contacts.where((c)=>c.type==(receipt?'عميل':'مورد')).map((c)=>PopupMenuItem(value:c.id,child:Text('${c.name} (${c.id})'))).toList()))),
       const SizedBox(height:8),TextField(controller:note,decoration:const InputDecoration(labelText:'البيان')),
-      const SizedBox(height:8),TextField(controller:amount,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'المبلغ')),
+      const SizedBox(height:8),TextField(controller:amount,keyboardType:const TextInputType.numberWithOptions(decimal:true),onChanged:(_)=>setState((){}),decoration:const InputDecoration(labelText:'المبلغ')),
+      const SizedBox(height:8),Text('رصيد الحساب: ${money(store.cash(aid)?.balance??0)} ${store.currency}'),
+      if(!receipt && dval(amount.text)>(store.cash(aid)?.balance??0))const Text('الرصيد غير كافٍ',style:TextStyle(color:Colors.red)),
     ])),
     actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),
-      FilledButton(onPressed:(){if(store.addVoucher(receipt:receipt,cashId:aid,counterAccount:other.text,note:note.text,amount:dval(amount.text)))Navigator.pop(ctx);},child:const Text('حفظ السند'))],
+      FilledButton(onPressed:dval(amount.text)<=0 || other.text.trim().isEmpty || (!receipt && dval(amount.text)>(store.cash(aid)?.balance??0))?null:(){if(store.addVoucher(receipt:receipt,cashId:aid,counterAccount:other.text,note:note.text,amount:dval(amount.text))){Navigator.pop(ctx);}else{ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تعذر حفظ السند، تحقق من الحساب المقابل والمبلغ')));}},child:const Text('حفظ السند'))],
   )));
 }
 void cashAccountDialog(BuildContext context,HesabatiStore store){

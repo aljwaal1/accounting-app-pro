@@ -9,7 +9,7 @@ class _SaleFormState extends State<SaleForm>{
     final customers=widget.store.contacts.where((e)=>e.type=='عميل').toList();
     return Directionality(textDirection:TextDirection.rtl,child:Scaffold(appBar:AppBar(title:const Text('فاتورة مبيعات جديدة')),body:ListView(padding:const EdgeInsets.fromLTRB(16,12,16,28),children:[
       Card(color:const Color(0xFFEAF2FF),child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('إنشاء فاتورة بيع',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800)),const SizedBox(height:6),Text('اختر العميل، أضف الأصناف، ثم راجع الإجمالي قبل الحفظ',style:TextStyle(color:Colors.blueGrey.shade700))]))),const SizedBox(height:14),
-      DropdownButtonFormField(value:customerId.isEmpty?null:customerId,decoration:const InputDecoration(labelText:'العميل'),items:customers.map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>setState(()=>customerId=v??'')),
+      DropdownButtonFormField(value:customerId.isEmpty?null:customerId,isExpanded:true,decoration:const InputDecoration(labelText:'العميل',prefixIcon:Icon(Icons.person_outline)),items:customers.map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>setState(()=>customerId=v??'')),
       const SizedBox(height:14),
       const Text('الأصناف والخدمات',style:TextStyle(fontSize:16,fontWeight:FontWeight.bold)),const SizedBox(height:8),
       FilledButton.tonalIcon(onPressed:()=>addLineDialog(context,widget.store,lines,forPurchase:false,onDone:()=>setState((){})),icon:const Icon(Icons.add),label:const Text('إضافة صنف')),
@@ -28,7 +28,7 @@ class _SaleFormState extends State<SaleForm>{
         if(remaining<0)const Text('المبلغ المدفوع يتجاوز إجمالي الفاتورة',style:TextStyle(color:Colors.red)),
       ])));}),
       const SizedBox(height:10),
-      DropdownButtonFormField(value:accountId.isEmpty?null:accountId,decoration:const InputDecoration(labelText:'الخزينة / البنك'),items:widget.store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text('${x.name} • ${money(x.balance)}'))).toList(),onChanged:(v)=>setState(()=>accountId=v??'')),
+      DropdownButtonFormField(value:accountId.isEmpty?null:accountId,isExpanded:true,decoration:const InputDecoration(labelText:'الخزينة / البنك',prefixIcon:Icon(Icons.account_balance_wallet_outlined)),items:widget.store.cashAccounts.map((x)=>DropdownMenuItem(value:x.id,child:Text('${x.name} • ${money(x.balance)}'))).toList(),onChanged:(v)=>setState(()=>accountId=v??'')),
       const SizedBox(height:16),
       Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[MetricRow('الإجمالي قبل الخصم',subtotal,widget.store.currency,Colors.black),MetricRow('الإجمالي النهائي',total,widget.store.currency,Colors.blue)]))),
       const SizedBox(height:16),

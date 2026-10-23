@@ -7,15 +7,19 @@ class _SaleFormState extends State<SaleForm>{
   @override Widget build(BuildContext context){
     final subtotal=lines.fold<double>(0,(s,l)=>s+l.total);final base=(subtotal-dval(discount.text)).clamp(0,double.infinity).toDouble();final total=base+base*dval(fee.text)/100;
     final customers=widget.store.contacts.where((e)=>e.type=='عميل').toList();
-    return Directionality(textDirection:TextDirection.rtl,child:Scaffold(appBar:AppBar(title:const Text('فاتورة مبيعات جديدة')),body:ListView(padding:const EdgeInsets.all(14),children:[
+    return Directionality(textDirection:TextDirection.rtl,child:Scaffold(appBar:AppBar(title:const Text('فاتورة مبيعات جديدة')),body:ListView(padding:const EdgeInsets.fromLTRB(16,12,16,28),children:[
+      Card(color:const Color(0xFFEAF2FF),child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('إنشاء فاتورة بيع',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800)),const SizedBox(height:6),Text('اختر العميل، أضف الأصناف، ثم راجع الإجمالي قبل الحفظ',style:TextStyle(color:Colors.blueGrey.shade700))]))),const SizedBox(height:14),
       DropdownButtonFormField(value:customerId.isEmpty?null:customerId,decoration:const InputDecoration(labelText:'العميل'),items:customers.map((x)=>DropdownMenuItem(value:x.id,child:Text(x.name))).toList(),onChanged:(v)=>setState(()=>customerId=v??'')),
-      const SizedBox(height:10),
+      const SizedBox(height:14),
+      const Text('الأصناف والخدمات',style:TextStyle(fontSize:16,fontWeight:FontWeight.bold)),const SizedBox(height:8),
       FilledButton.tonalIcon(onPressed:()=>addLineDialog(context,widget.store,lines,forPurchase:false,onDone:()=>setState((){})),icon:const Icon(Icons.add),label:const Text('إضافة صنف')),
       const SizedBox(height:10),
       ...lines.asMap().entries.map((e)=>Card(child:ListTile(title:Text(e.value.name),subtitle:Text('${money(e.value.qty)} × ${money(e.value.price)}'),trailing:Row(mainAxisSize:MainAxisSize.min,children:[Text(money(e.value.total),style:const TextStyle(fontWeight:FontWeight.bold)),IconButton(onPressed:()=>setState(()=>lines.removeAt(e.key)),icon:const Icon(Icons.close))])))),
-      const SizedBox(height:10),
+      const SizedBox(height:16),
+      const Text('الخصومات والرسوم',style:TextStyle(fontSize:16,fontWeight:FontWeight.bold)),const SizedBox(height:8),
       Row(children:[Expanded(child:TextField(controller:discount,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الخصم'),onChanged:(_)=>setState((){}))),const SizedBox(width:8),Expanded(child:TextField(controller:fee,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'رسوم/ضريبة اختيارية %'),onChanged:(_)=>setState((){})))]),
-      const SizedBox(height:10),
+      const SizedBox(height:16),
+      const Text('الدفع والتحصيل',style:TextStyle(fontSize:16,fontWeight:FontWeight.bold)),const SizedBox(height:8),
       TextField(controller:paid,keyboardType:const TextInputType.numberWithOptions(decimal:true),onChanged:(_)=>setState((){}),decoration:InputDecoration(labelText:'المدفوع الآن (${widget.store.currency})',helperText:'المتبقي يُحسب تلقائيًا')),
       const SizedBox(height:8),
       Builder(builder:(context){final payment=dval(paid.text);final remaining=total-payment;return Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(children:[

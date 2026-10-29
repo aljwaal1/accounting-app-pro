@@ -44,11 +44,11 @@ void addLineDialog(BuildContext context,HesabatiStore store,List<DocLine> target
   String pid=store.products.isNotEmpty?store.products.first.id:'';final qty=TextEditingController(text:'1');final price=TextEditingController();
   Product? current()=>store.product(pid);
   price.text=forPurchase?money(current()?.cost??0):money(current()?.price??0);
-  showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setState)=>AlertDialog(title:Text(forPurchase?'إضافة صنف شراء':'إضافة صنف بيع'),content:Column(mainAxisSize:MainAxisSize.min,children:[
+  showDialog(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setState)=>AlertDialog(title:Text(forPurchase?'إضافة صنف شراء':'إضافة صنف بيع'),content:SizedBox(width:MediaQuery.sizeOf(ctx).width*0.88,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
     DropdownButtonFormField(value:pid.isEmpty?null:pid,isExpanded:true,decoration:const InputDecoration(labelText:'اختر الصنف',prefixIcon:Icon(Icons.search)),items:store.products.map((p)=>DropdownMenuItem(value:p.id,child:Text('${p.name} • متاح ${money(p.stock)}',overflow:TextOverflow.ellipsis))).toList(),onChanged:(v){setState(()=>pid=v??'');final p=current();price.text=money(forPurchase?(p?.cost??0):(p?.price??0));}),
     const SizedBox(height:10),TextField(controller:qty,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'الكمية')),
     const SizedBox(height:10),TextField(controller:price,keyboardType:TextInputType.number,decoration:InputDecoration(labelText:forPurchase?'تكلفة الوحدة':'سعر الوحدة'))
-  ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){
+  ]))),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('إلغاء')),FilledButton(onPressed:(){
     final p=current(),q=dval(qty.text),pr=dval(price.text);if(p==null||!q.isFinite||!pr.isFinite||q<=0||pr<0||(!forPurchase && q>p.stock)){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تحقق من الصنف والكمية والمخزون والسعر')));return;}
     target.add(DocLine(productId:p.id,name:p.name,qty:q,price:pr,cost:p.cost));Navigator.pop(ctx);onDone();
   },child:const Text('إضافة'))])));
